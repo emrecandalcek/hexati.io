@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HexDomain — Nasıl Oynanır</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@300;400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/pages.css">
+  <style>
+    .guide-section { width: 100%; display: flex; flex-direction: column; gap: 0; }
+    .guide-block {
+      background: var(--c-panel);
+      border: 1px solid var(--c-border);
+      border-radius: 12px;
+      padding: 24px 28px;
+      backdrop-filter: blur(8px);
+      margin-bottom: 16px;
+    }
+    .guide-block h3 {
+      font-family: var(--font-hud);
+      font-size: 11px;
+      letter-spacing: 3px;
+      color: var(--c-accent);
+      margin-bottom: 16px;
+    }
+    .guide-block p, .guide-block li {
+      font-size: 13px;
+      color: var(--c-text);
+      line-height: 1.8;
+      margin-bottom: 6px;
+    }
+    .guide-block ul { list-style: none; padding: 0; }
+    .guide-block li::before { content: '⬡ '; color: var(--c-accent); font-size: 10px; }
+    .tip-box {
+      background: rgba(0,212,255,0.05);
+      border: 1px solid rgba(0,212,255,0.2);
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: 12px;
+      color: var(--c-dim);
+      margin-top: 12px;
+    }
+    .tip-box strong { color: var(--c-accent); }
+    .mode-chip {
+      display: inline-block;
+      font-family: var(--font-hud);
+      font-size: 9px;
+      letter-spacing: 1px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      margin: 3px 4px;
+    }
+    .chip-classic  { background: rgba(0,212,255,0.1); border: 1px solid rgba(0,212,255,0.3); color: #00d4ff; }
+    .chip-arcade   { background: rgba(255,165,2,0.1);  border: 1px solid rgba(255,165,2,0.3);  color: #ffa502; }
+    .chip-survival { background: rgba(255,71,87,0.1);  border: 1px solid rgba(255,71,87,0.3);  color: #ff4757; }
+    .chip-sandbox  { background: rgba(162,155,254,0.1);border: 1px solid rgba(162,155,254,0.3);color: #a29bfe; }
+  </style>
+</head>
+<body>
+<div class="page-wrap">
+
+  <div class="page-header">
+    <a href="index.html" class="back-btn">← GERİ</a>
+    <div class="page-title">? NASIL OYNANIR</div>
+  </div>
+
+  <div class="guide-section">
+
+    <div class="guide-block">
+      <h3>TEMEL MEKANİK</h3>
+      <ul>
+        <li>Karakterin renkli bir alana sahip — bu senin <strong>bölgen</strong>.</li>
+        <li>Bölgenden çıkınca iz bırakırsın. Bu iz <strong>tehlikelidir</strong> — kendi izine basarsan ölürsün.</li>
+        <li>Bölgene geri döndüğünde iz ile bölge arasındaki tüm boş hexler senin olur.</li>
+        <li>Büyük döngüler kur → daha fazla bölge kazan → liderlik tablosunu domine et.</li>
+      </ul>
+      <div class="tip-box">
+        <strong>💡 İpucu:</strong> Bölgeye girerken son hex otomatik boyanır — geri dönmekten çekinme!
+      </div>
+    </div>
+
+    <div class="guide-block">
+      <h3>TEHLİKELER</h3>
+      <ul>
+        <li><span style="color:#ff4757">Kendi izin</span> — üstüne basarsan anında ölürsün.</li>
+        <li><span style="color:#ff4757">Düşman izleri</span> — düşmanın izini geçersen onu öldürürsün (veya o seni).</li>
+        <li><span style="color:#ff4757">Kırmızı hexler</span> — tehlike bölgeleri, izde iken çarpma.</li>
+        <li><span style="color:#ff4757">Harita sınırı</span> — dışarı çıkarsan ölürsün.</li>
+      </ul>
+    </div>
+
+    <div class="guide-block">
+      <h3>GÜÇLENDIRMELER & COİN</h3>
+      <ul>
+        <li>⚡ <strong>Speed Boost</strong> — 9 saniye daha hızlı hareket.</li>
+        <li>🛡 <strong>Shield</strong> — izin varken ölmezsin (düşman izi dahil).</li>
+        <li>✕2 <strong>Double Capture</strong> — capture ettiğinde 2x bölge.</li>
+        <li>⬡ <strong>Coin</strong> — haritada altın hexler var, topla. Shop'tan upgrade al.</li>
+      </ul>
+      <div class="tip-box">
+        <strong>B tuşu</strong> ile shop'u aç. Coin harcayarak kalıcı upgrade satın al.
+      </div>
+    </div>
+
+    <div class="guide-block">
+      <h3>UPGRADE SHOP</h3>
+      <ul>
+        <li>⚡ <strong>Speed Up</strong> — her seviye %15 daha hızlı hareket.</li>
+        <li>⬡ <strong>Capture Boost</strong> — capture başına +%20 bölge bonusu.</li>
+        <li>🛡 <strong>Shield+</strong> — kalkan süresini +4 saniye uzatır.</li>
+        <li>➤ <strong>Wide Trail</strong> — iz 3 hücre genişliğinde bırakır.</li>
+        <li>📡 <strong>Bot Radar</strong> — minimap'te bot izleri görünür.</li>
+        <li>🧲 <strong>Coin Magnet</strong> — yakın coинleri otomatik toplar.</li>
+        <li>👻 <strong>Ghost Mode</strong> — capture sonrası 1.2 saniye dokunulmaz.</li>
+        <li>✕2 <strong>Double Coins</strong> — kalıcı 2x coin kazanımı.</li>
+      </ul>
+    </div>
+
+    <div class="guide-block">
+      <h3>OYUN MODLARI</h3>
+      <div>
+        <span class="mode-chip chip-classic">CLASSIC</span>
+        <p>Sonsuz süre, shop var, 6 bot, tam deneyim.</p>
+
+        <span class="mode-chip chip-arcade">ARCADE</span>
+        <p>90 saniye sayacı. Süre bitince en yüksek bölge% kazanır. Shop yok, botlar hızlı.</p>
+
+        <span class="mode-chip chip-survival">SURVIVAL</span>
+        <p>3 canın var. Her 30 saniyede +1 bot eklenip tüm botlar hızlanır. Skor = hayatta kalma süresi (saniye).</p>
+
+        <span class="mode-chip chip-sandbox">SANDBOX</span>
+        <p>Tüm parametreleri özelleştir. Grid boyutu, bot sayısı, hız çarpanı, özel renkler.</p>
+      </div>
+    </div>
+
+    <div class="guide-block">
+      <h3>COMBO SİSTEMİ</h3>
+      <ul>
+        <li>Art arda capture yapınca combo çarpanı artar.</li>
+        <li>Combo ×2 ve üzeri = ekstra coin bonusu.</li>
+        <li>4 saniye içinde capture yapamazsan combo sıfırlanır.</li>
+      </ul>
+      <div class="tip-box">
+        <strong>💡 Strateji:</strong> Küçük döngüler yaparak combo zinciri kur, sonra büyük bir capture ile bitiş yap!
+      </div>
+    </div>
+
+  </div>
+
+  <a href="index.html" style="font-family:var(--font-hud);font-size:11px;letter-spacing:2px;color:var(--c-dim);text-decoration:none;padding:12px 0;">← ANA MENÜYE DÖN</a>
+
+</div>
+</body>
+</html>

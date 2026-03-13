@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HexDomain — Multiplayer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@300;400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/ui.css">
+  <link rel="stylesheet" href="css/shop.css">
+  <style>
+    /* MP accent: purple */
+    :root {
+      --c-accent: #7c3aed;
+      --c-accent2: #a29bfe;
+      --c-border: rgba(124,58,237,0.25);
+      --glow: 0 0 12px rgba(124,58,237,0.4);
+    }
+    #territory-fill { background: linear-gradient(90deg, #7c3aed, #a29bfe); box-shadow: 0 0 8px #7c3aed; }
+    #territory-pct  { color: #a29bfe; text-shadow: 0 0 10px rgba(162,155,254,0.4); }
+    .logo-hex { color: #a29bfe; text-shadow: 0 0 30px #a29bfe, 0 0 60px rgba(124,58,237,0.5); }
+    .btn-primary { border-color:#7c3aed; color:#a29bfe; text-shadow:0 0 8px #a29bfe; background: rgba(124,58,237,0.1); }
+    .btn-primary:hover { box-shadow: 0 0 24px rgba(124,58,237,0.4); }
+
+    /* Connection screen */
+    #connect-overlay .overlay-content { gap: 18px; }
+
+    .input-field {
+      width: 100%;
+      padding: 10px 14px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--c-border);
+      border-radius: 6px;
+      color: var(--c-text);
+      font-family: var(--font-mono);
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .input-field:focus { border-color: #7c3aed; }
+    .input-field::placeholder { color: var(--c-dim); }
+
+    .input-label {
+      font-family: var(--font-hud);
+      font-size: 9px;
+      letter-spacing: 2px;
+      color: var(--c-dim);
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    .input-group { width: 100%; }
+
+    /* Connection status */
+    #conn-status {
+      font-family: var(--font-hud);
+      font-size: 10px;
+      letter-spacing: 2px;
+      padding: 6px 14px;
+      border-radius: 20px;
+      text-align: center;
+    }
+    .status-ok      { color: #2ed573; border: 1px solid rgba(46,213,115,0.3); }
+    .status-err     { color: #ff4757; border: 1px solid rgba(255,71,87,0.3); }
+    .status-pending { color: #ffd700; border: 1px solid rgba(255,215,0,0.3); }
+
+    /* Player count badge */
+    #mp-player-count {
+      position: fixed;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: var(--font-hud);
+      font-size: 11px;
+      letter-spacing: 2px;
+      color: var(--c-dim);
+      background: var(--c-panel);
+      border: 1px solid var(--c-border);
+      border-radius: 20px;
+      padding: 4px 14px;
+      pointer-events: none;
+      z-index: 20;
+      display: none;
+    }
+
+    /* Chat box */
+    #chat-wrap {
+      position: fixed;
+      bottom: 48px;
+      right: 16px;
+      width: 260px;
+      z-index: 30;
+      display: none;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    #chat-log {
+      max-height: 160px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column-reverse;
+      gap: 3px;
+    }
+
+    .chat-entry {
+      font-size: 11px;
+      padding: 3px 8px;
+      background: rgba(0,0,0,0.55);
+      border-radius: 4px;
+      border-left: 2px solid currentColor;
+      animation: slide-in 0.2s ease;
+    }
+
+    .chat-name { font-weight: 600; margin-right: 4px; }
+
+    #chat-input-row {
+      display: flex;
+      gap: 4px;
+    }
+
+    #chat-input {
+      flex: 1;
+      padding: 5px 8px;
+      background: rgba(0,0,0,0.6);
+      border: 1px solid rgba(124,58,237,0.3);
+      border-radius: 4px;
+      color: var(--c-text);
+      font-size: 11px;
+      font-family: var(--font-mono);
+      outline: none;
+    }
+    #chat-input:focus { border-color: #7c3aed; }
+
+    #chat-send {
+      padding: 5px 10px;
+      background: rgba(124,58,237,0.2);
+      border: 1px solid rgba(124,58,237,0.4);
+      border-radius: 4px;
+      color: #a29bfe;
+      font-size: 11px;
+      cursor: pointer;
+    }
+
+    /* Ping display */
+    #ping-display {
+      font-family: var(--font-hud);
+      font-size: 9px;
+      letter-spacing: 1px;
+      color: var(--c-dim);
+    }
+
+    /* Room list */
+    .room-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(124,58,237,0.15);
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .room-item:hover { background: rgba(124,58,237,0.08); border-color: rgba(124,58,237,0.4); }
+    .room-name { font-family: var(--font-hud); font-size: 11px; letter-spacing: 1px; color: #a29bfe; }
+    .room-players { font-size: 11px; color: var(--c-dim); }
+
+    #rooms-list { display: flex; flex-direction: column; gap: 6px; width: 100%; max-height: 200px; overflow-y: auto; }
+  </style>
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <!-- Player count -->
+  <div id="mp-player-count">👥 1/8</div>
+
+  <!-- HUD -->
+  <div id="hud">
+    <div id="score-panel">
+      <div class="hud-label">TERRITORY</div>
+      <div id="territory-bar"><div id="territory-fill"></div></div>
+      <div id="territory-pct">0%</div>
+      <div id="hud-coins" style="margin-top:6px;font-family:var(--font-hud);font-size:13px;color:#ffd700">⬡ 0</div>
+    </div>
+
+    <div id="top-center"><div id="powerup-display"></div></div>
+
+    <div id="right-panel">
+      <div id="leaderboard">
+        <div class="lb-title">◈ LEADERBOARD</div>
+        <div id="lb-entries"></div>
+      </div>
+      <div id="minimap-wrap">
+        <div class="minimap-label">MAP</div>
+        <canvas id="minimap"></canvas>
+      </div>
+    </div>
+
+    <div id="kill-feed"></div>
+
+    <div id="stats-bar">
+      <span id="stat-kills">KILLS: 0</span>
+      <span id="stat-deaths">DEATHS: 0</span>
+      <span id="stat-time">TIME: 0:00</span>
+      <span style="color:var(--c-accent2)">[ B ] SHOP</span>
+      <span id="ping-display">— ms</span>
+      <span id="stat-mode" style="color:#a29bfe">MULTIPLAYER</span>
+      <a href="index.html" style="color:var(--c-dim);text-decoration:none;font-family:var(--font-hud);font-size:10px">[ ESC ]</a>
+    </div>
+  </div>
+
+  <div id="notif-container"></div>
+
+  <!-- Chat -->
+  <div id="chat-wrap">
+    <div id="chat-log"></div>
+    <div id="chat-input-row">
+      <input id="chat-input" placeholder="Mesaj yaz... [Enter]" maxlength="80">
+      <button id="chat-send">↵</button>
+    </div>
+  </div>
+
+  <!-- Connect / Lobby Screen -->
+  <div id="connect-overlay" class="overlay active">
+    <div class="overlay-bg"></div>
+    <div class="overlay-content">
+      <div class="game-logo">
+        <span class="logo-hex">HEX</span><span class="logo-domain">DOMAIN</span>
+      </div>
+      <p class="game-tagline" style="color:#a29bfe;letter-spacing:4px">MULTIPLAYER</p>
+
+      <div id="conn-status" class="status-pending">🔄 BAĞLANIYOR...</div>
+
+      <div class="input-group">
+        <label class="input-label">OYUNCU ADI</label>
+        <input class="input-field" id="inp-name" maxlength="16" placeholder="İsmin..." value="">
+      </div>
+
+      <div class="menu-section">
+        <label class="menu-label">RENK SEÇ</label>
+        <div id="color-options"></div>
+      </div>
+
+      <div class="input-group">
+        <label class="input-label">ODA ADI (boş = "main")</label>
+        <input class="input-field" id="inp-room" maxlength="20" placeholder="main">
+      </div>
+
+      <!-- Room list -->
+      <div style="width:100%">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <span style="font-family:var(--font-hud);font-size:9px;letter-spacing:2px;color:var(--c-dim)">AÇIK ODALAR</span>
+          <button onclick="refreshRooms()" style="font-family:var(--font-hud);font-size:9px;letter-spacing:1px;padding:3px 10px;background:transparent;border:1px solid var(--c-dim);border-radius:4px;color:var(--c-dim);cursor:pointer">↻ YENILE</button>
+        </div>
+        <div id="rooms-list"><div style="color:var(--c-dim);font-size:12px;text-align:center;padding:12px">Yükleniyor...</div></div>
+      </div>
+
+      <button id="btn-join" class="btn-primary" disabled>⬡ OYUNA GİR</button>
+
+      <a href="index.html" style="font-family:var(--font-hud);font-size:10px;letter-spacing:2px;color:var(--c-dim);text-decoration:none;">← ANA MENU</a>
+    </div>
+  </div>
+
+  <!-- Death Screen -->
+  <div id="death-overlay" class="overlay">
+    <div class="overlay-bg"></div>
+    <div class="overlay-content">
+      <h2 class="death-title" style="color:#a29bfe">ELİMİNE EDİLDİN</h2>
+      <div id="death-stats"></div>
+      <button id="btn-respawn" class="btn-primary">↺ YENİDEN DOĞ</button>
+      <button id="btn-menu" class="btn-secondary">ANA MENU</button>
+    </div>
+  </div>
+
+  <!-- Shop Overlay -->
+  <div id="shop-overlay" class="overlay">
+    <div class="overlay-bg"></div>
+    <div class="overlay-content shop-content">
+      <div class="shop-header">
+        <span class="shop-title">⬡ UPGRADE SHOP</span>
+        <span id="shop-coins-display" class="shop-coins">⬡ 0</span>
+        <button id="btn-shop-close" class="btn-secondary">✕ KAPAT [B]</button>
+      </div>
+      <div id="shop-items" class="shop-grid"></div>
+      <p class="shop-hint">Server onaylı alımlar · Tüm oyuncular görebilir</p>
+    </div>
+  </div>
+
+  <!-- Scripts: shared config first, then client -->
+  <script>
+    // Load shared config as browser global
+    window.__SHARED__ = true;
+  </script>
+  <script src="/shared/config.js"></script>
+  <script src="/shared/utils.js"></script>
+  <script src="/shared/grid.js"></script>
+  <script src="/shared/floodfill.js"></script>
+
+  <!-- Socket.io client (served by server) -->
+  <script src="/socket.io/socket.io.js"></script>
+
+  <!-- Our modules -->
+  <script src="js/storage.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/input.js"></script>
+  <script src="js/camera.js"></script>
+  <script src="js/particles.js"></script>
+  <script src="js/renderer.js"></script>
+  <script src="js/net.js"></script>
+
+  <script>
+  // ============================================================
+  // Multiplayer client main
+  // ============================================================
+  const net         = new NetworkManager();
+  const audio       = new AudioEngine();
+  const input       = new InputHandler();
+  const camera      = new Camera();
+  let   renderer    = null;
+
+  let myId          = null;
+  let grid          = null;
+  let entities      = {};   // id → entity state object
+  let myEntity      = null;
+  let gameStarted   = false;
+  let startTime     = Date.now();
+  let kills         = 0;
+  let deaths        = 0;
+  let shopOpen      = false;
+  let pingStart     = 0;
+  let pingMs        = 0;
+
+  // Saved prefs
+  const savedName  = localStorage.getItem('mp_name')  || '';
+  const savedColor = localStorage.getItem('mp_color') || CONFIG.PLAYER_COLORS[0];
+  document.getElementById('inp-name').value = savedName;
+
+  // ── Color picker ──────────────────────────────────────────
+  let selectedColor = savedColor;
+  const colorContainer = document.getElementById('color-options');
+  CONFIG.PLAYER_COLORS.forEach(color => {
+    const btn = document.createElement('div');
+    btn.className = 'color-opt' + (color === selectedColor ? ' selected' : '');
+    btn.style.background = color;
+    btn.onclick = () => {
+      document.querySelectorAll('.color-opt').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      selectedColor = color;
+      audio.click();
+    };
+    colorContainer.appendChild(btn);
+  });
+
+  // ── Connect to server ─────────────────────────────────────
+  const SERVER_URL = window.location.origin;
+
+  async function connectToServer() {
+    const statusEl = document.getElementById('conn-status');
+    statusEl.className = 'status-pending';
+    statusEl.textContent = '🔄 BAĞLANIYOR...';
+
+    try {
+      await net.connect(SERVER_URL);
+      statusEl.className = 'status-ok';
+      statusEl.textContent = '✓ BAĞLANDI — Odaya katıl';
+      document.getElementById('btn-join').disabled = false;
+      refreshRooms();
+    } catch (e) {
+      statusEl.className = 'status-err';
+      statusEl.textContent = '✗ BAĞLANTI BAŞARISIZ — Yenile';
+      document.getElementById('btn-join').disabled = true;
+    }
+  }
+
+  async function refreshRooms() {
+    try {
+      const res   = await fetch('/api/rooms');
+      const rooms = await res.json();
+      const el    = document.getElementById('rooms-list');
+      if (!rooms.length) {
+        el.innerHTML = '<div style="color:var(--c-dim);font-size:12px;text-align:center;padding:12px">Henüz oda yok — ilk sen oluştur!</div>';
+        return;
+      }
+      el.innerHTML = rooms.map(r => `
+        <div class="room-item" onclick="document.getElementById('inp-room').value='${r.id}';audio.click()">
+          <span class="room-name">⬡ ${r.id}</span>
+          <span class="room-players">${r.players}/${r.max} oyuncu</span>
+        </div>
+      `).join('');
+    } catch(e) {}
+  }
+
+  // ── Join room ─────────────────────────────────────────────
+  document.getElementById('btn-join').onclick = () => {
+    const name  = (document.getElementById('inp-name').value.trim() || 'ANONIM').toUpperCase().slice(0, 16);
+    const room  = (document.getElementById('inp-room').value.trim() || 'main').toLowerCase();
+    localStorage.setItem('mp_name',  name);
+    localStorage.setItem('mp_color', selectedColor);
+    audio.resume(); audio.click();
+    net.joinRoom(room, name, selectedColor);
+    document.getElementById('conn-status').textContent = '🔄 ODA BEKLENİYOR...';
+    document.getElementById('btn-join').disabled = true;
+  };
+
+  // ── Network events ────────────────────────────────────────
+  net.on('room:joined', ({ roomId, playerId }) => {
+    myId = playerId;
+    net.myId = playerId;
+    console.log('[MP] Room joined:', roomId, 'myId:', myId);
+  });
+
+  net.on('room:error', ({ msg }) => {
+    const st = document.getElementById('conn-status');
+    st.className = 'status-err';
+    st.textContent = '✗ ' + msg;
+    document.getElementById('btn-join').disabled = false;
+  });
+
+  net.on('game:init', ({ myId: id, gridData, gridW, gridH, entities: ents }) => {
+    myId = id;
+
+    // Build grid
+    CONFIG.GRID_W = gridW; CONFIG.GRID_H = gridH;
+    grid = new Grid(gridW, gridH);
+    grid.deserialize(gridData);
+
+    // Build entity map
+    entities = {};
+    ents.forEach(e => { entities[e.id] = e; });
+
+    myEntity = entities[myId];
+
+    // Boot renderer
+    const canvas     = document.getElementById('game');
+    const miniCanvas = document.getElementById('minimap');
+    miniCanvas.width = miniCanvas.height = CONFIG.MINIMAP_PX;
+    renderer = new Renderer(canvas, miniCanvas);
+
+    // Snap camera
+    if (myEntity) {
+      const pp = Utils.hexToPixel(myEntity.x, myEntity.y);
+      camera.snap(pp.x, pp.y);
+    }
+
+    // Hide connect overlay, show game
+    document.getElementById('connect-overlay').classList.remove('active');
+    document.getElementById('mp-player-count').style.display = 'block';
+    document.getElementById('chat-wrap').style.display = 'flex';
+
+    gameStarted = true;
+    startTime   = Date.now();
+    _buildShopUI();
+    requestAnimationFrame(_renderLoop);
+    console.log('[MP] Game init complete');
+  });
+
+  net.on('game:state', ({ entities: ents, patches }) => {
+    // Apply grid patches
+    if (patches && patches.length) grid.applyPatches(patches);
+
+    // Update entity states
+    ents.forEach(e => {
+      entities[e.id] = e;
+    });
+    myEntity = entities[myId];
+
+    // Update HUD
+    if (myEntity) {
+      _updateHUD();
+    }
+  });
+
+  net.on('game:events', evs => {
+    evs.forEach(ev => {
+      if (ev.type === 'kill') {
+        const killer = entities[ev.killer];
+        const victim = entities[ev.victim];
+        if (ev.killer === myId) {
+          kills++;
+          audio.kill();
+          _killFeed(`YOU cut ${victim?.name || '?'}'s trail!`, myEntity?.color || '#fff');
+          if (renderer) renderer.spawnParticles(Utils.hexToPixel(ev.pos.x, ev.pos.y), myEntity?.color || '#fff', 12);
+        } else if (ev.victim === myId) {
+          _killFeed(`${killer?.name || '?'} cut your trail!`, killer?.color || '#fff');
+        } else {
+          _killFeed(`${killer?.name || '?'} ✕ ${victim?.name || '?'}`, killer?.color || '#888');
+        }
+      }
+      if (ev.type === 'death' && ev.id === myId) {
+        deaths++;
+        audio.death();
+        _showDeath();
+      }
+      if (ev.type === 'capture' && ev.id === myId) {
+        audio.capture();
+        if (ev.cells > 8) _notify(`+${ev.cells} hücre!`, myEntity?.color || '#fff');
+        if (ev.combo > 1) _notify(`COMBO ×${ev.combo}!`, '#ffd700');
+        if (renderer && ev.pos) renderer.spawnParticles(Utils.hexToPixel(ev.pos.x, ev.pos.y), myEntity?.color || '#fff', 18);
+      }
+      if (ev.type === 'powerup' && ev.id === myId) {
+        audio.powerup();
+        _notify(
+          ev.ptype === 'speed' ? '⚡ SPEED BOOST' : ev.ptype === 'shield' ? '🛡 SHIELD ON' : '✕2 DOUBLE',
+          ev.ptype === 'speed' ? '#ffd700' : ev.ptype === 'shield' ? '#00d4ff' : '#2ed573'
+        );
+      }
+      if (ev.type === 'coin' && ev.id === myId) {
+        audio.coinPickup?.();
+        if (renderer) renderer.spawnParticles(Utils.hexToPixel(ev.pos.x, ev.pos.y), '#ffd700', 5);
+      }
+    });
+  });
+
+  net.on('game:playerJoined', ({ entity }) => {
+    entities[entity.id] = entity;
+    _notify(`${entity.name} katıldı`, entity.color);
+  });
+
+  net.on('game:playerLeft', ({ id }) => {
+    const e = entities[id];
+    if (e) _notify(`${e.name} ayrıldı`, '#6c7a89');
+    delete entities[id];
+  });
+
+  net.on('game:respawn', ({ entity }) => {
+    entities[entity.id] = entity;
+    if (entity.id === myId) {
+      myEntity = entity;
+      document.getElementById('death-overlay').classList.remove('active');
+      const pp = Utils.hexToPixel(entity.x, entity.y);
+      camera.snap(pp.x, pp.y);
+    }
+  });
+
+  net.on('game:shopOk', ({ key, upgrades, coins }) => {
+    if (myEntity) { myEntity.upgrades = upgrades; myEntity.coins = coins; }
+    audio.powerup();
+    const item = CONFIG.SHOP[key];
+    if (item) _notify(`${item.icon} ${item.label} yükseltildi!`, '#2ed573');
+    _refreshShopUI();
+  });
+
+  net.on('chat:msg', ({ name, color, text }) => {
+    _addChat(name, color, text);
+  });
+
+  net.on('disconnect', () => {
+    _notify('Sunucu bağlantısı kesildi!', '#ff4757');
+  });
+
+  // ── Input → server ────────────────────────────────────────
+  const origConsume = InputHandler.prototype.consume;
+  InputHandler.prototype.consume = function() {
+    const d = origConsume.call(this);
+    if (d && gameStarted) net.sendDir(d);
+    return d;
+  };
+
+  // ── Render loop (client-side only, no game logic) ─────────
+  let lastFrame = performance.now();
+  function _renderLoop(now) {
+    if (!gameStarted || !renderer) { requestAnimationFrame(_renderLoop); return; }
+    const dt = Math.min(now - lastFrame, 80);
+    lastFrame = now;
+
+    // Consume input (sends to server)
+    input.consume();
+
+    // Camera follow my entity
+    if (myEntity) {
+      const pp = Utils.hexToPixel(myEntity.x, myEntity.y);
+      camera.follow(pp.x, pp.y);
+    }
+
+    // Build entities array for renderer (adapt server state to renderer format)
+    const entArr = Object.values(entities).map(e => ({
+      ...e,
+      px: Utils.hexToPixel(e.x, e.y).x,
+      py: Utils.hexToPixel(e.x, e.y).y,
+      updateLerp: () => {},  // no lerp on client — server is authoritative
+    }));
+
+    renderer.draw(grid, entArr, camera, dt);
+
+    // Player count
+    const humanCount = Object.values(entities).filter(e => !e.isBot && e.alive).length;
+    document.getElementById('mp-player-count').textContent = `👥 ${humanCount} OYUNCU`;
+
+    requestAnimationFrame(_renderLoop);
+  }
+
+  // ── HUD ───────────────────────────────────────────────────
+  function _updateHUD() {
+    if (!myEntity) return;
+    const total = CONFIG.GRID_W * CONFIG.GRID_H;
+    const pct   = Math.min(100, myEntity.territory / total * 100).toFixed(1);
+    document.getElementById('territory-fill').style.width = pct + '%';
+    document.getElementById('territory-pct').textContent  = pct + '%';
+    document.getElementById('stat-kills').textContent  = `KILLS: ${kills}`;
+    document.getElementById('stat-deaths').textContent = `DEATHS: ${deaths}`;
+    const elapsed = Date.now() - startTime;
+    document.getElementById('stat-time').textContent = `TIME: ${Utils.formatTime(elapsed)}`;
+    document.getElementById('hud-coins').textContent  = `⬡ ${myEntity.coins || 0}`;
+
+    // Leaderboard
+    const sorted = Object.values(entities).filter(e=>e.alive).sort((a,b)=>b.territory-a.territory).slice(0,8);
+    document.getElementById('lb-entries').innerHTML = sorted.map((e,i) => {
+      const p = (e.territory/total*100).toFixed(1);
+      const isMe = e.id === myId;
+      return `<div class="lb-row${isMe?' lb-player':''}">
+        <span class="lb-rank">${i+1}</span>
+        <span class="lb-color" style="background:${e.color}"></span>
+        <span class="lb-name">${e.name}${e.isBot?'':'⚡'}</span>
+        <span class="lb-score">${p}%</span>
+      </div>`;
+    }).join('');
+  }
+
+  // ── Death screen ──────────────────────────────────────────
+  function _showDeath() {
+    const me = myEntity || {};
+    const total = CONFIG.GRID_W * CONFIG.GRID_H;
+    const pct = ((me.territory||0)/total*100).toFixed(1);
+    document.getElementById('death-stats').innerHTML = [
+      ['KİLLS', kills], ['ÖLÜMLER', deaths],
+      ['BÖLGE', pct+'%'], ['COİN', me.coins||0],
+    ].map(([k,v])=>`<div class="death-stat"><span>${k}</span><span>${v}</span></div>`).join('');
+    document.getElementById('death-overlay').classList.add('active');
+  }
+
+  document.getElementById('btn-respawn').onclick = () => {
+    audio.resume(); audio.click();
+    net.sendRespawn();
+  };
+  document.getElementById('btn-menu').onclick = () => { window.location.href = 'index.html'; };
+
+  // ── Kill feed ─────────────────────────────────────────────
+  function _killFeed(text, color) {
+    const el = document.createElement('div');
+    el.className = 'kill-entry'; el.style.color = color; el.textContent = text;
+    document.getElementById('kill-feed').prepend(el);
+    const feed = document.getElementById('kill-feed');
+    while (feed.children.length > 5) feed.lastChild.remove();
+    setTimeout(()=>el.classList.add('fade-out'), CONFIG.KILL_FEED_MS - 600);
+    setTimeout(()=>el.remove(), CONFIG.KILL_FEED_MS);
+  }
+
+  function _notify(text, color) {
+    const el = document.createElement('div');
+    el.className='notif'; el.style.color=color; el.textContent=text;
+    document.getElementById('notif-container').appendChild(el);
+    setTimeout(()=>el.classList.add('notif-out'), 1400);
+    setTimeout(()=>el.remove(), 1900);
+  }
+
+  // ── Shop ──────────────────────────────────────────────────
+  function _buildShopUI() {
+    const grid = document.getElementById('shop-items');
+    grid.innerHTML = '';
+    for (const [key, item] of Object.entries(CONFIG.SHOP)) {
+      const card = document.createElement('div');
+      card.className = 'shop-card'; card.dataset.key = key;
+      card.innerHTML = `
+        <div class="shop-icon">${item.icon}</div>
+        <div class="shop-label">${item.label}</div>
+        <div class="shop-footer">
+          <span class="shop-cost">⬡ ${item.cost}</span>
+          <span class="shop-level"></span>
+        </div>
+        <button class="shop-buy-btn">BUY</button>`;
+      card.querySelector('.shop-buy-btn').onclick = () => net.sendBuy(key);
+      grid.appendChild(card);
+    }
+
+    document.getElementById('btn-shop-close').onclick = () => _closeShop();
+    document.addEventListener('keydown', e => {
+      if (e.key === 'b' || e.key === 'B') shopOpen ? _closeShop() : _openShop();
+      if (e.key === 'Escape') { if (shopOpen) _closeShop(); }
+    });
+  }
+
+  function _openShop() {
+    shopOpen = true;
+    _refreshShopUI();
+    document.getElementById('shop-overlay').classList.add('active');
+    audio.click();
+  }
+  function _closeShop() {
+    shopOpen = false;
+    document.getElementById('shop-overlay').classList.remove('active');
+    audio.click();
+  }
+
+  function _refreshShopUI() {
+    if (!myEntity) return;
+    document.getElementById('shop-coins-display').textContent = `⬡ ${myEntity.coins || 0}`;
+    for (const [key, item] of Object.entries(CONFIG.SHOP)) {
+      const card = document.querySelector(`.shop-card[data-key="${key}"]`);
+      if (!card) continue;
+      const level  = (myEntity.upgrades && myEntity.upgrades[key]) || 0;
+      const maxed  = level >= item.max;
+      const afford = (myEntity.coins||0) >= item.cost;
+      card.querySelector('.shop-level').textContent = maxed ? 'MAXED' : `${level}/${item.max}`;
+      const btn = card.querySelector('.shop-buy-btn');
+      btn.disabled = maxed || !afford;
+      btn.textContent = maxed ? 'MAXED' : afford ? 'BUY' : 'NO COINS';
+      card.classList.toggle('maxed',  maxed);
+      card.classList.toggle('afford', !maxed && afford);
+      card.classList.toggle('poor',   !maxed && !afford);
+    }
+  }
+
+  // ── Chat ──────────────────────────────────────────────────
+  function _addChat(name, color, text) {
+    const log = document.getElementById('chat-log');
+    const el  = document.createElement('div');
+    el.className = 'chat-entry'; el.style.color = color;
+    el.innerHTML = `<span class="chat-name">${name}:</span>${text}`;
+    log.prepend(el);
+    while (log.children.length > 30) log.lastChild.remove();
+  }
+
+  document.getElementById('chat-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      const txt = document.getElementById('chat-input').value.trim();
+      if (txt) { net.sendChat(txt); document.getElementById('chat-input').value = ''; }
+    }
+  });
+  document.getElementById('chat-send').onclick = () => {
+    const txt = document.getElementById('chat-input').value.trim();
+    if (txt) { net.sendChat(txt); document.getElementById('chat-input').value = ''; }
+  };
+
+  // ── Ping ──────────────────────────────────────────────────
+  setInterval(() => {
+    if (net.connected) {
+      pingStart = Date.now();
+      net.socket.emit('ping_check');
+    }
+  }, 3000);
+  net.on && (net.socket?.on('pong_check', () => {
+    pingMs = Date.now() - pingStart;
+    document.getElementById('ping-display').textContent = `${pingMs}ms`;
+  }));
+
+  // ── Boot ──────────────────────────────────────────────────
+  connectToServer();
+  </script>
+</body>
+</html>

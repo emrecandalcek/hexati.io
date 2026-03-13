@@ -1,0 +1,36 @@
+/* ===== BASE ===== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --c-bg:       #080c14;
+  --c-grid:     #0f1520;
+  --c-accent:   #00d4ff;
+  --c-danger:   #ff4757;
+  --c-success:  #2ed573;
+  --c-warn:     #ffa502;
+  --c-text:     #c8d8e8;
+  --c-dim:      #4a5568;
+  --c-panel:    rgba(8, 14, 24, 0.88);
+  --c-border:   rgba(0, 212, 255, 0.18);
+  --font-hud:   'Orbitron', monospace;
+  --font-mono:  'JetBrains Mono', monospace;
+  --radius:     6px;
+  --glow:       0 0 12px rgba(0, 212, 255, 0.4);
+}
+
+html, body {
+  width: 100%; height: 100%;
+  overflow: hidden;
+  background: var(--c-bg);
+  font-family: var(--font-mono);
+  color: var(--c-text);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+canvas#game {
+  display: block;
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+}

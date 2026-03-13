@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HexDomain — Leaderboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@300;400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/pages.css">
+</head>
+<body>
+<div class="page-wrap">
+
+  <!-- Header -->
+  <div class="page-header">
+    <a href="index.html" class="back-btn">← GERİ</a>
+    <div class="page-title">◈ LİDERBOARD</div>
+  </div>
+
+  <!-- Overall stats -->
+  <div class="panel">
+    <div class="panel-head">
+      <span class="panel-label">GENEL İSTATİSTİKLER</span>
+      <button class="btn-sm danger" onclick="clearAll()">TÜM SKORLARI SİL</button>
+    </div>
+    <div class="stats-grid" id="stats-grid">
+      <div class="stat-box"><div class="stat-box-val" id="sg-games">0</div><div class="stat-box-lbl">TOPLAM OYUN</div></div>
+      <div class="stat-box"><div class="stat-box-val" id="sg-kills">0</div><div class="stat-box-lbl">TOPLAM KILL</div></div>
+      <div class="stat-box"><div class="stat-box-val" id="sg-deaths">0</div><div class="stat-box-lbl">TOPLAM ÖLÜM</div></div>
+      <div class="stat-box"><div class="stat-box-val" id="sg-capture">0</div><div class="stat-box-lbl">KAPTÜRILEN HÜCRE</div></div>
+      <div class="stat-box"><div class="stat-box-val" id="sg-time">0:00</div><div class="stat-box-lbl">TOPLAM SÜRE</div></div>
+      <div class="stat-box"><div class="stat-box-val" id="sg-kd">—</div><div class="stat-box-lbl">K/D ORANI</div></div>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tab-nav">
+    <button class="tab-btn active" onclick="switchTab('classic',this)">⬡ CLASSIC</button>
+    <button class="tab-btn" onclick="switchTab('arcade',this)">⏱ ARCADE</button>
+    <button class="tab-btn" onclick="switchTab('survival',this)">💀 SURVIVAL</button>
+  </div>
+
+  <!-- Score tables -->
+  <div class="panel" id="table-classic">
+    <div class="panel-head">
+      <span class="panel-label">CLASSIC — EN İYİ 10</span>
+      <button class="btn-sm" onclick="clearMode('classic')">SİL</button>
+    </div>
+    <div id="body-classic"></div>
+  </div>
+
+  <div class="panel" id="table-arcade" style="display:none">
+    <div class="panel-head">
+      <span class="panel-label">ARCADE — EN İYİ 10</span>
+      <button class="btn-sm" onclick="clearMode('arcade')">SİL</button>
+    </div>
+    <div id="body-arcade"></div>
+  </div>
+
+  <div class="panel" id="table-survival" style="display:none">
+    <div class="panel-head">
+      <span class="panel-label">SURVIVAL — EN İYİ 10</span>
+      <button class="btn-sm" onclick="clearMode('survival')">SİL</button>
+    </div>
+    <div id="body-survival"></div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast">Skorlar silindi</div>
+
+<script>
+  const MODES = { classic: '⬡', arcade: '⏱', survival: '💀' };
+
+  function loadKey(k, def) {
+    try { const v = localStorage.getItem('hexdomain_' + k); return v ? JSON.parse(v) : def; } catch(e) { return def; }
+  }
+
+  function loadStats() {
+    const s = loadKey('stats', {});
+    document.getElementById('sg-games').textContent   = s.gamesPlayed || 0;
+    document.getElementById('sg-kills').textContent   = s.totalKills  || 0;
+    document.getElementById('sg-deaths').textContent  = s.totalDeaths || 0;
+    document.getElementById('sg-capture').textContent = s.totalCapture|| 0;
+    const ms = s.timePlayed || 0;
+    const m = Math.floor(ms/60000), sec = Math.floor((ms%60000)/1000);
+    document.getElementById('sg-time').textContent = `${m}:${String(sec).padStart(2,'0')}`;
+    const kd = s.totalDeaths ? (s.totalKills / s.totalDeaths).toFixed(2) : (s.totalKills || 0);
+    document.getElementById('sg-kd').textContent = kd;
+  }
+
+  function renderTable(mode) {
+    const scores = loadKey('scores_' + mode, []);
+    const el = document.getElementById('body-' + mode);
+    if (!scores.length) {
+      el.innerHTML = '<div class="no-scores">Henüz skor yok. Oynamaya başla!</div>';
+      return;
+    }
+    const rankClass = i => i === 0 ? 'rank-1' : i === 1 ? 'rank-2' : i === 2 ? 'rank-3' : '';
+    const rankEmoji = i => i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1);
+    const fmtDate = ts => {
+      const d = new Date(ts);
+      return `${d.getDate().toString().padStart(2,'0')}.${(d.getMonth()+1).toString().padStart(2,'0')}.${d.getFullYear()}`;
+    };
+
+    let html = '<table class="score-table"><thead><tr>';
+    if (mode === 'classic')  html += '<th>#</th><th>SKOR</th><th>KILL</th><th>ÖLÜM</th><th>TARİH</th>';
+    if (mode === 'arcade')   html += '<th>#</th><th>SKOR %</th><th>KILL</th><th>TARİH</th>';
+    if (mode === 'survival') html += '<th>#</th><th>SÜRE</th><th>DALGA</th><th>KILL</th><th>TARİH</th>';
+    html += '</tr></thead><tbody>';
+
+    scores.forEach((s, i) => {
+      html += `<tr class="${rankClass(i)}">`;
+      html += `<td><span class="rank-badge">${rankEmoji(i)}</span></td>`;
+      if (mode === 'classic')  html += `<td class="score-val">${s.score}%</td><td>${s.kills||0}</td><td>${s.deaths||0}</td>`;
+      if (mode === 'arcade')   html += `<td class="score-val">${s.score}%</td><td>${s.kills||0}</td>`;
+      if (mode === 'survival') {
+        const sec = s.score, m = Math.floor(sec/60), ss = sec % 60;
+        html += `<td class="score-val">${m}:${String(ss).padStart(2,'0')}</td><td>${s.wave||1}</td><td>${s.kills||0}</td>`;
+      }
+      html += `<td style="color:var(--c-dim);font-size:11px">${fmtDate(s.date||0)}</td>`;
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+    el.innerHTML = html;
+  }
+
+  function switchTab(mode, btn) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    ['classic','arcade','survival'].forEach(m => {
+      document.getElementById('table-' + m).style.display = m === mode ? '' : 'none';
+    });
+    renderTable(mode);
+  }
+
+  function clearMode(mode) {
+    if (!confirm(`${mode.toUpperCase()} skorları silinsin mi?`)) return;
+    localStorage.removeItem('hexdomain_scores_' + mode);
+    renderTable(mode);
+    showToast(mode + ' skorları silindi');
+  }
+
+  function clearAll() {
+    if (!confirm('TÜM skorlar ve istatistikler silinsin mi?')) return;
+    ['classic','arcade','survival','stats'].forEach(k => localStorage.removeItem('hexdomain_' + k));
+    loadStats();
+    ['classic','arcade','survival'].forEach(renderTable);
+    showToast('Tüm veriler silindi');
+  }
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2500);
+  }
+
+  // Init
+  loadStats();
+  renderTable('classic');
+</script>
+</body>
+</html>

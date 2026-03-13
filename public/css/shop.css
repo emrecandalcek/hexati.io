@@ -1,0 +1,124 @@
+/* ===== SHOP ===== */
+.shop-content {
+  max-width: 700px;
+  width: 95vw;
+  max-height: 85vh;
+  overflow-y: auto;
+  gap: 16px;
+}
+
+.shop-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  flex-wrap: wrap;
+}
+
+.shop-title {
+  font-family: var(--font-hud);
+  font-size: 18px;
+  font-weight: 900;
+  color: var(--c-accent);
+  letter-spacing: 3px;
+  flex: 1;
+}
+
+.shop-coins {
+  font-family: var(--font-hud);
+  font-size: 18px;
+  font-weight: 700;
+  color: #ffd700;
+  text-shadow: 0 0 12px #ffd700;
+}
+
+.shop-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+  gap: 10px;
+  width: 100%;
+}
+
+.shop-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 14px 10px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  transition: border-color 0.2s, background 0.2s;
+  text-align: center;
+}
+
+.shop-card.afford  { border-color: rgba(0,212,255,0.35); }
+.shop-card.maxed   { border-color: rgba(46,213,115,0.4); background: rgba(46,213,115,0.05); }
+.shop-card.poor    { opacity: 0.5; }
+
+.shop-icon  { font-size: 22px; line-height: 1; }
+.shop-label { font-family: var(--font-hud); font-size: 10px; font-weight: 700; letter-spacing: 1px; color: var(--c-text); }
+.shop-desc  { font-size: 10px; color: var(--c-dim); line-height: 1.4; }
+
+.shop-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 6px;
+}
+
+.shop-cost  { font-family: var(--font-hud); font-size: 11px; font-weight: 700; color: #ffd700; }
+.shop-level { font-family: var(--font-hud); font-size: 9px; color: var(--c-dim); }
+.shop-card.maxed .shop-level { color: var(--c-success); }
+
+.shop-buy-btn {
+  font-family: var(--font-hud);
+  font-size: 9px;
+  letter-spacing: 1px;
+  padding: 5px 10px;
+  background: rgba(0,212,255,0.1);
+  border: 1px solid var(--c-accent);
+  border-radius: 4px;
+  color: var(--c-accent);
+  cursor: pointer;
+  pointer-events: all;
+  transition: all 0.15s;
+  width: 100%;
+}
+
+.shop-buy-btn:hover:not(:disabled)  { background: rgba(0,212,255,0.25); }
+.shop-buy-btn:disabled              { opacity: 0.4; cursor: default; border-color: var(--c-dim); color: var(--c-dim); background: transparent; }
+.shop-card.maxed .shop-buy-btn      { border-color: var(--c-success); color: var(--c-success); background: rgba(46,213,115,0.1); }
+
+.shop-hint {
+  font-size: 10px;
+  color: var(--c-dim);
+  text-align: center;
+  font-family: var(--font-mono);
+}
+
+/* FPS buttons */
+#fps-options { display: flex; gap: 8px; }
+
+.fps-btn {
+  font-family: var(--font-hud);
+  font-size: 10px;
+  letter-spacing: 1px;
+  padding: 6px 16px;
+  background: transparent;
+  border: 1px solid var(--c-dim);
+  border-radius: 4px;
+  color: var(--c-dim);
+  cursor: pointer;
+  transition: all 0.2s;
+  pointer-events: all;
+}
+
+.fps-btn:hover    { border-color: var(--c-accent); color: var(--c-accent); }
+.fps-btn.selected { border-color: var(--c-accent); color: var(--c-accent); background: rgba(0,212,255,0.1); }
+
+/* Scrollbar style for shop */
+.shop-content::-webkit-scrollbar { width: 4px; }
+.shop-content::-webkit-scrollbar-track { background: transparent; }
+.shop-content::-webkit-scrollbar-thumb { background: var(--c-border); border-radius: 2px; }

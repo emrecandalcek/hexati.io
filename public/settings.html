@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HexDomain — Ayarlar</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@300;400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/pages.css">
+</head>
+<body>
+<div class="page-wrap">
+
+  <div class="page-header">
+    <a href="index.html" class="back-btn">← GERİ</a>
+    <div class="page-title">⚙ AYARLAR</div>
+  </div>
+
+  <!-- Audio -->
+  <div class="panel">
+    <div class="panel-head"><span class="panel-label">SES AYARLARI</span></div>
+
+    <div class="setting-row">
+      <div class="setting-info">
+        <div class="setting-name">Ses Açık/Kapalı</div>
+        <div class="setting-desc">Oyun içi tüm sesler</div>
+      </div>
+      <div class="setting-control">
+        <label class="toggle">
+          <input type="checkbox" id="snd-enabled" checked>
+          <span class="toggle-track"></span>
+        </label>
+      </div>
+    </div>
+
+    <div class="setting-row">
+      <div class="setting-info">
+        <div class="setting-name">Ses Seviyesi</div>
+        <div class="setting-desc" id="vol-label">70%</div>
+      </div>
+      <div class="setting-control">
+        <input type="range" id="snd-volume" min="0" max="100" value="70">
+      </div>
+    </div>
+  </div>
+
+  <!-- Gameplay -->
+  <div class="panel">
+    <div class="panel-head"><span class="panel-label">OYUN AYARLARI</span></div>
+
+    <div class="setting-row">
+      <div class="setting-info">
+        <div class="setting-name">Varsayılan Zorluk</div>
+        <div class="setting-desc">Yeni oyun başlatıldığında</div>
+      </div>
+      <div class="setting-control">
+        <div class="btn-group" id="diff-group">
+          <button class="btn-opt" data-val="easy">EASY</button>
+          <button class="btn-opt selected" data-val="normal">NORMAL</button>
+          <button class="btn-opt" data-val="hard">HARD</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="setting-row">
+      <div class="setting-info">
+        <div class="setting-name">FPS Limiti</div>
+        <div class="setting-desc">60+ önerilir. Düşük FPS=daha az titreme</div>
+      </div>
+      <div class="setting-control">
+        <div class="btn-group" id="fps-group">
+          <button class="btn-opt" data-val="30">30</button>
+          <button class="btn-opt selected" data-val="0">60+</button>
+          <button class="btn-opt" data-val="144">144</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="setting-row">
+      <div class="setting-info">
+        <div class="setting-name">Parçacık Efektleri</div>
+        <div class="setting-desc">Kill ve capture animasyonları</div>
+      </div>
+      <div class="setting-control">
+        <label class="toggle">
+          <input type="checkbox" id="particles-enabled" checked>
+          <span class="toggle-track"></span>
+        </label>
+      </div>
+    </div>
+
+    <div class="setting-row">
+      <div class="setting-info">
+        <div class="setting-name">FPS Göstergesi</div>
+        <div class="setting-desc">Ekranın sağ üstünde FPS sayacı</div>
+      </div>
+      <div class="setting-control">
+        <label class="toggle">
+          <input type="checkbox" id="show-fps" checked>
+          <span class="toggle-track"></span>
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <!-- Kontroller -->
+  <div class="panel">
+    <div class="panel-head"><span class="panel-label">KONTROLLER</span></div>
+    <div style="padding: 20px; display: flex; flex-direction: column; gap: 12px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px">
+        <div style="color:var(--c-dim)">Hareket</div>
+        <div><kbd style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:3px;padding:2px 6px;font-family:var(--font-mono);font-size:11px">W A S D</kbd> veya <kbd style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:3px;padding:2px 6px;font-family:var(--font-mono);font-size:11px">↑ ↓ ← →</kbd></div>
+        <div style="color:var(--c-dim)">Shop Aç/Kapat</div>
+        <div><kbd style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:3px;padding:2px 6px;font-family:var(--font-mono);font-size:11px">B</kbd></div>
+        <div style="color:var(--c-dim)">Mobil Kontrol</div>
+        <div>Ekrandaki D-Pad</div>
+        <div style="color:var(--c-dim)">Touch Swipe</div>
+        <div>Parmağı kaydır</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Actions -->
+  <div style="display:flex;flex-direction:column;align-items:center;gap:12px;width:100%">
+    <button class="btn-save" onclick="saveSettings()">✓ KAYDET</button>
+    <button style="font-family:var(--font-hud);font-size:10px;letter-spacing:1px;padding:8px 20px;background:transparent;border:1px solid var(--c-dim);border-radius:4px;color:var(--c-dim);cursor:pointer;" onclick="resetSettings()">SIFIRLA</button>
+  </div>
+
+</div>
+
+<div class="toast" id="toast">Ayarlar kaydedildi ✓</div>
+
+<script>
+  function loadKey(k, def) {
+    try { const v = localStorage.getItem('hexdomain_' + k); return v ? JSON.parse(v) : def; } catch(e) { return def; }
+  }
+
+  const defaults = { volume: 70, soundEnabled: true, difficulty: 'normal', fpsLimit: 0, particles: true, showFPS: true };
+
+  function loadSettings() {
+    const s = loadKey('settings', defaults);
+    document.getElementById('snd-enabled').checked    = s.soundEnabled ?? true;
+    document.getElementById('snd-volume').value       = s.volume ?? 70;
+    document.getElementById('vol-label').textContent  = (s.volume ?? 70) + '%';
+    document.getElementById('particles-enabled').checked = s.particles ?? true;
+    document.getElementById('show-fps').checked       = s.showFPS ?? true;
+
+    setActive('diff-group', s.difficulty || 'normal');
+    setActive('fps-group',  String(s.fpsLimit ?? 0));
+  }
+
+  function setActive(groupId, val) {
+    document.querySelectorAll(`#${groupId} .btn-opt`).forEach(b => {
+      b.classList.toggle('selected', b.dataset.val === String(val));
+    });
+  }
+
+  // Button group toggles
+  document.querySelectorAll('.btn-group').forEach(group => {
+    group.querySelectorAll('.btn-opt').forEach(btn => {
+      btn.onclick = () => {
+        group.querySelectorAll('.btn-opt').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+      };
+    });
+  });
+
+  document.getElementById('snd-volume').oninput = e => {
+    document.getElementById('vol-label').textContent = e.target.value + '%';
+  };
+
+  function getSelected(groupId) {
+    const btn = document.querySelector(`#${groupId} .btn-opt.selected`);
+    return btn ? btn.dataset.val : null;
+  }
+
+  function saveSettings() {
+    const s = {
+      soundEnabled: document.getElementById('snd-enabled').checked,
+      volume:       parseInt(document.getElementById('snd-volume').value),
+      difficulty:   getSelected('diff-group'),
+      fpsLimit:     parseInt(getSelected('fps-group') || '0'),
+      particles:    document.getElementById('particles-enabled').checked,
+      showFPS:      document.getElementById('show-fps').checked,
+    };
+    localStorage.setItem('hexdomain_settings', JSON.stringify(s));
+    showToast('Ayarlar kaydedildi ✓');
+  }
+
+  function resetSettings() {
+    localStorage.removeItem('hexdomain_settings');
+    loadSettings();
+    showToast('Ayarlar sıfırlandı');
+  }
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2500);
+  }
+
+  loadSettings();
+</script>
+</body>
+</html>

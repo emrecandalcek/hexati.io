@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HexDomain — Arcade Mode</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@300;400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/ui.css">
+  <style>
+    /* Arcade orange theme overrides */
+    :root {
+      --c-accent: #ffa502;
+      --c-border: rgba(255,165,2,0.2);
+      --glow: 0 0 12px rgba(255,165,2,0.4);
+    }
+    #territory-fill { background: linear-gradient(90deg, #ffa502, #ff6b35); box-shadow: 0 0 8px #ffa502; }
+    #territory-pct  { color: #ffa502; text-shadow: 0 0 12px rgba(255,165,2,0.5); }
+    .logo-hex { color: #ffa502; text-shadow: 0 0 30px #ffa502; }
+    .btn-primary { border-color:#ffa502; color:#ffa502; text-shadow:0 0 8px #ffa502; }
+    .btn-primary:hover { box-shadow: 0 0 24px rgba(255,165,2,0.4); }
+    #stat-mode { color: #ffa502 !important; }
+
+    /* Big countdown */
+    #arcade-timer {
+      position: fixed;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: 'Orbitron', monospace;
+      font-size: 42px;
+      font-weight: 900;
+      color: #ffa502;
+      text-shadow: 0 0 20px rgba(255,165,2,0.6);
+      z-index: 20;
+      pointer-events: none;
+      letter-spacing: 2px;
+      transition: color 0.3s, text-shadow 0.3s;
+    }
+    #arcade-timer.warn  { color: #ff4757; text-shadow: 0 0 30px rgba(255,71,87,0.7); animation: tick 1s infinite; }
+    @keyframes tick { 0%,100% { transform:translateX(-50%) scale(1); } 50% { transform:translateX(-50%) scale(1.08); } }
+
+    /* End overlay */
+    #arcade-end-overlay .result-score {
+      font-family: 'Orbitron', monospace;
+      font-size: 72px;
+      font-weight: 900;
+      color: #ffa502;
+      text-shadow: 0 0 40px rgba(255,165,2,0.5);
+    }
+    .result-label {
+      font-family: 'Orbitron', monospace;
+      font-size: 9px;
+      letter-spacing: 3px;
+      color: var(--c-dim);
+    }
+    .result-row {
+      display: flex;
+      justify-content: space-between;
+      width: 100%;
+      padding: 8px 16px;
+      background: rgba(255,255,255,0.03);
+      border-radius: 4px;
+      font-size: 13px;
+    }
+    #arcade-best-label {
+      font-family: 'Orbitron', monospace;
+      font-size: 13px;
+      color: #ffd700;
+      letter-spacing: 2px;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <!-- Big countdown timer -->
+  <div id="arcade-timer">1:30</div>
+
+  <!-- HUD -->
+  <div id="hud">
+    <div id="score-panel">
+      <div class="hud-label">TERRITORY</div>
+      <div id="territory-bar"><div id="territory-fill"></div></div>
+      <div id="territory-pct">0%</div>
+    </div>
+
+    <div id="top-center"><div id="powerup-display"></div></div>
+
+    <div id="right-panel">
+      <div id="leaderboard">
+        <div class="lb-title">◈ LEADERBOARD</div>
+        <div id="lb-entries"></div>
+      </div>
+      <div id="minimap-wrap">
+        <div class="minimap-label">MAP</div>
+        <canvas id="minimap"></canvas>
+      </div>
+    </div>
+
+    <div id="kill-feed"></div>
+
+    <div id="stats-bar">
+      <span id="stat-kills">KILLS: 0</span>
+      <span id="stat-deaths">DEATHS: 0</span>
+      <span id="stat-time" style="display:none"></span>
+      <span id="stat-mode" style="color:#ffa502">ARCADE</span>
+      <a href="index.html" style="color:var(--c-dim);text-decoration:none;font-family:var(--font-hud);font-size:10px;letter-spacing:1px">[ ESC ] MENU</a>
+    </div>
+  </div>
+
+  <div id="notif-container"></div>
+
+  <!-- Main Menu -->
+  <div id="menu-overlay" class="overlay active">
+    <div class="overlay-bg"></div>
+    <div class="overlay-content">
+      <div class="game-logo">
+        <span class="logo-hex">ARCADE</span>
+      </div>
+      <p class="game-tagline" style="color:#ffa502;letter-spacing:4px">90 SANİYE · MAKSİMUM BÖLGE</p>
+
+      <div style="text-align:center;font-size:12px;color:var(--c-dim);line-height:1.8">
+        Shop yok · Coin yok · Sadece hız ve strateji<br>
+        Botlar daha hızlı · Tehlike bölgesi yok<br>
+        Süre bitince en yüksek bölge% kazanır
+      </div>
+
+      <div class="menu-section">
+        <label class="menu-label">RENK SEÇ</label>
+        <div id="color-options"></div>
+      </div>
+
+      <div class="menu-section">
+        <label class="menu-label">ZORLUK</label>
+        <div id="difficulty-options">
+          <button class="diff-btn" data-diff="easy">EASY</button>
+          <button class="diff-btn selected" data-diff="normal">NORMAL</button>
+          <button class="diff-btn" data-diff="hard">HARD</button>
+        </div>
+      </div>
+
+      <button id="btn-start" class="btn-primary">⏱ OYUNU BAŞLAT</button>
+
+      <a href="index.html" style="font-family:var(--font-hud);font-size:10px;letter-spacing:2px;color:var(--c-dim);text-decoration:none;">← ANA MENU</a>
+    </div>
+  </div>
+
+  <!-- Death Screen -->
+  <div id="death-overlay" class="overlay">
+    <div class="overlay-bg"></div>
+    <div class="overlay-content">
+      <h2 class="death-title">ELİMİNE EDİLDİN</h2>
+      <div id="death-stats"></div>
+      <button id="btn-respawn" class="btn-primary">↺ YENİDEN BAŞLA</button>
+      <button id="btn-menu" class="btn-secondary">ANA MENU</button>
+    </div>
+  </div>
+
+  <!-- Arcade End Screen -->
+  <div id="arcade-end-overlay" class="overlay">
+    <div class="overlay-bg"></div>
+    <div class="overlay-content" style="gap:16px">
+      <p style="font-family:'Orbitron',monospace;font-size:11px;letter-spacing:4px;color:#ffa502">SÜRE DOLDU</p>
+      <div class="result-label">BÖLGE SKORU</div>
+      <div class="result-score" id="arcade-score-val">0%</div>
+      <div id="arcade-best-label">—</div>
+      <div class="result-row">
+        <span style="color:var(--c-dim)">KILL</span>
+        <span id="arcade-kills-val" style="color:var(--c-accent);font-family:'Orbitron',monospace;font-weight:700">0</span>
+      </div>
+      <button id="btn-arcade-retry" class="btn-primary">↺ TEKRAR OYNA</button>
+      <button id="btn-arcade-lb" class="btn-secondary">◈ LIDERBOARD</button>
+      <a href="index.html" style="font-family:'Orbitron',monospace;font-size:10px;letter-spacing:2px;color:var(--c-dim);text-decoration:none;">← ANA MENU</a>
+    </div>
+  </div>
+
+  <script src="js/storage.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/grid.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/input.js"></script>
+  <script src="js/floodfill.js"></script>
+  <script src="js/particles.js"></script>
+  <script src="js/entity.js"></script>
+  <script src="js/player.js"></script>
+  <script src="js/bot.js"></script>
+  <script src="js/powerup.js"></script>
+  <script src="js/coins.js"></script>
+  <script src="js/camera.js"></script>
+  <script src="js/renderer.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/game.js"></script>
+  <script src="js/mode-arcade.js"></script>
+  <script>
+    document.getElementById('btn-arcade-retry').onclick = () => {
+      document.getElementById('arcade-end-overlay').classList.remove('active');
+      document.getElementById('menu-overlay').classList.add('active');
+    };
+    document.getElementById('btn-arcade-lb').onclick = () => {
+      window.location.href = 'leaderboard.html';
+    };
+
+    // Arcade timer display is driven directly in GameArcade._update
+  </script>
+</body>
+</html>

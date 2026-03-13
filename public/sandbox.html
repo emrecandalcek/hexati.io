@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HexDomain — Sandbox Mode</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@300;400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/ui.css">
+  <link rel="stylesheet" href="css/shop.css">
+  <style>
+    :root { --c-accent: #a29bfe; --c-border: rgba(162,155,254,0.2); --glow: 0 0 12px rgba(162,155,254,0.4); }
+    #territory-fill { background: linear-gradient(90deg, #a29bfe, #6c5ce7); box-shadow: 0 0 8px #a29bfe; }
+    #territory-pct  { color: #a29bfe; }
+    .logo-hex { color: #a29bfe; text-shadow: 0 0 30px #a29bfe; }
+    .btn-primary { border-color:#a29bfe; color:#a29bfe; text-shadow:0 0 8px #a29bfe; }
+    .btn-primary:hover { box-shadow: 0 0 24px rgba(162,155,254,0.4); }
+
+    .sandbox-config {
+      width: 100%;
+      background: rgba(8,14,24,0.9);
+      border: 1px solid rgba(162,155,254,0.2);
+      border-radius: 10px;
+      padding: 20px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .cfg-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      font-size: 12px;
+    }
+    .cfg-label { color: #8a9bb0; font-family: 'Orbitron', monospace; font-size: 9px; letter-spacing: 1px; flex: 1; }
+    .cfg-val   { color: #a29bfe; font-family: 'Orbitron', monospace; font-size: 11px; font-weight: 700; width: 48px; text-align: right; }
+    input[type=range] {
+      -webkit-appearance: none; width: 120px; height: 4px;
+      background: rgba(255,255,255,0.1); border-radius: 2px; outline: none;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 14px; height: 14px;
+      background: #a29bfe; border-radius: 50%; cursor: pointer; box-shadow: 0 0 6px #a29bfe;
+    }
+    .cfg-divider { border-color: rgba(162,155,254,0.1); margin: 4px 0; }
+  </style>
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <!-- HUD -->
+  <div id="hud">
+    <div id="score-panel">
+      <div class="hud-label">TERRITORY</div>
+      <div id="territory-bar"><div id="territory-fill"></div></div>
+      <div id="territory-pct">0%</div>
+      <div id="hud-coins" style="margin-top:6px;font-family:var(--font-hud);font-size:13px;color:#ffd700">⬡ 0</div>
+    </div>
+    <div id="top-center"><div id="powerup-display"></div></div>
+    <div id="right-panel">
+      <div id="leaderboard">
+        <div class="lb-title">◈ LEADERBOARD</div>
+        <div id="lb-entries"></div>
+      </div>
+      <div id="minimap-wrap">
+        <div class="minimap-label">MAP</div>
+        <canvas id="minimap"></canvas>
+      </div>
+    </div>
+    <div id="kill-feed"></div>
+    <div id="stats-bar">
+      <span id="stat-kills">KILLS: 0</span>
+      <span id="stat-deaths">DEATHS: 0</span>
+      <span id="stat-time">TIME: 0:00</span>
+      <span style="color:var(--c-accent)">[ B ] SHOP</span>
+      <span id="stat-mode" style="color:#a29bfe">SANDBOX</span>
+      <a href="index.html" style="color:var(--c-dim);text-decoration:none;font-family:var(--font-hud);font-size:10px">[ ESC ]</a>
+    </div>
+  </div>
+
+  <div id="notif-container"></div>
+
+  <!-- Main Menu -->
+  <div id="menu-overlay" class="overlay active">
+    <div class="overlay-bg"></div>
+    <div class="overlay-content" style="max-width:520px">
+      <div class="game-logo">
+        <span class="logo-hex">SANDBOX</span>
+      </div>
+      <p class="game-tagline" style="color:#a29bfe;letter-spacing:4px">ÖZEL OYUN AYARLARI</p>
+
+      <div class="menu-section">
+        <label class="menu-label">RENK SEÇ</label>
+        <div id="color-options"></div>
+      </div>
+
+      <div class="sandbox-config">
+        <div class="cfg-row">
+          <span class="cfg-label">BOT SAYISI</span>
+          <input type="range" id="cfg-bots" min="1" max="12" value="6" oninput="updateCfg()">
+          <span class="cfg-val" id="v-bots">6</span>
+        </div>
+        <div class="cfg-row">
+          <span class="cfg-label">OYUNCU HIZI</span>
+          <input type="range" id="cfg-pspeed" min="80" max="350" step="10" value="190" oninput="updateCfg()">
+          <span class="cfg-val" id="v-pspeed">190ms</span>
+        </div>
+        <div class="cfg-row">
+          <span class="cfg-label">BOT HIZI</span>
+          <input type="range" id="cfg-bspeed" min="80" max="400" step="10" value="210" oninput="updateCfg()">
+          <span class="cfg-val" id="v-bspeed">210ms</span>
+        </div>
+        <hr class="cfg-divider">
+        <div class="cfg-row">
+          <span class="cfg-label">TEHLİKE BÖLGESİ</span>
+          <input type="range" id="cfg-danger" min="0" max="30" value="12" oninput="updateCfg()">
+          <span class="cfg-val" id="v-danger">12</span>
+        </div>
+        <div class="cfg-row">
+          <span class="cfg-label">MAX TRAIL</span>
+          <input type="range" id="cfg-trail" min="20" max="300" step="10" value="150" oninput="updateCfg()">
+          <span class="cfg-val" id="v-trail">150</span>
+        </div>
+        <div class="cfg-row">
+          <span class="cfg-label">GRID BOYUTU</span>
+          <input type="range" id="cfg-grid" min="40" max="120" step="10" value="80" oninput="updateCfg()">
+          <span class="cfg-val" id="v-grid">80</span>
+        </div>
+      </div>
+
+      <button id="btn-start" class="btn-primary" style="border-color:#a29bfe;color:#a29bfe">🔧 OYUNU BAŞLAT</button>
+
+      <a href="index.html" style="font-family:var(--font-hud);font-size:10px;letter-spacing:2px;color:var(--c-dim);text-decoration:none;">← ANA MENU</a>
+    </div>
+  </div>
+
+  <!-- Death Screen -->
+  <div id="death-overlay" class="overlay">
+    <div class="overlay-bg"></div>
+    <div class="overlay-content">
+      <h2 class="death-title" style="color:#a29bfe">ELİMİNE EDİLDİN</h2>
+      <div id="death-stats"></div>
+      <button id="btn-respawn" class="btn-primary">↺ YENİDEN BAŞLA</button>
+      <button id="btn-menu" class="btn-secondary">ANA MENU</button>
+    </div>
+  </div>
+
+  <!-- Shop -->
+  <div id="shop-overlay" class="overlay">
+    <div class="overlay-bg"></div>
+    <div class="overlay-content shop-content">
+      <div class="shop-header">
+        <span class="shop-title">⬡ UPGRADE SHOP</span>
+        <span id="shop-coins-display" class="shop-coins">⬡ 0</span>
+        <button id="btn-shop-close" class="btn-secondary">✕ KAPAT  [B]</button>
+      </div>
+      <div id="shop-items" class="shop-grid"></div>
+    </div>
+  </div>
+
+  <script src="js/storage.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/grid.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/input.js"></script>
+  <script src="js/floodfill.js"></script>
+  <script src="js/particles.js"></script>
+  <script src="js/entity.js"></script>
+  <script src="js/player.js"></script>
+  <script src="js/bot.js"></script>
+  <script src="js/powerup.js"></script>
+  <script src="js/coins.js"></script>
+  <script src="js/camera.js"></script>
+  <script src="js/renderer.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/shop.js"></script>
+  <script src="js/game.js"></script>
+  <script>
+    function updateCfg() {
+      const bots   = document.getElementById('cfg-bots').value;
+      const pspeed = document.getElementById('cfg-pspeed').value;
+      const bspeed = document.getElementById('cfg-bspeed').value;
+      const danger = document.getElementById('cfg-danger').value;
+      const trail  = document.getElementById('cfg-trail').value;
+      const grid   = document.getElementById('cfg-grid').value;
+      document.getElementById('v-bots').textContent   = bots;
+      document.getElementById('v-pspeed').textContent = pspeed + 'ms';
+      document.getElementById('v-bspeed').textContent = bspeed + 'ms';
+      document.getElementById('v-danger').textContent = danger;
+      document.getElementById('v-trail').textContent  = trail;
+      document.getElementById('v-grid').textContent   = grid;
+    }
+
+    window.addEventListener('load', () => {
+      window.game = new Game();
+
+      // Hook start to apply sandbox config
+      const originalStart = window.game.start.bind(window.game);
+      window.game.start = function(color) {
+        CONFIG.BOT_COUNT         = parseInt(document.getElementById('cfg-bots').value);
+        CONFIG.MOVE_INTERVAL     = parseInt(document.getElementById('cfg-pspeed').value);
+        CONFIG.BOT_MOVE_BASE     = parseInt(document.getElementById('cfg-bspeed').value);
+        CONFIG.DANGER_ZONE_COUNT = parseInt(document.getElementById('cfg-danger').value);
+        CONFIG.MAX_TRAIL         = parseInt(document.getElementById('cfg-trail').value);
+        CONFIG.GRID_W = CONFIG.GRID_H = parseInt(document.getElementById('cfg-grid').value);
+        originalStart(color);
+        document.getElementById('stat-mode').textContent = 'SANDBOX';
+      };
+    });
+  </script>
+</body>
+</html>

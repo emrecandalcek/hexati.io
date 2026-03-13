@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HexDomain — Classic Mode</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@300;400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/ui.css">
+  <link rel="stylesheet" href="css/shop.css">
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <!-- HUD -->
+  <div id="hud">
+    <div id="score-panel">
+      <div class="hud-label">TERRITORY</div>
+      <div id="territory-bar"><div id="territory-fill"></div></div>
+      <div id="territory-pct">0%</div>
+      <div id="hud-coins" style="margin-top:6px;font-family:var(--font-hud);font-size:13px;color:#ffd700">⬡ 0</div>
+    </div>
+
+    <div id="top-center"><div id="powerup-display"></div></div>
+
+    <div id="right-panel">
+      <div id="leaderboard">
+        <div class="lb-title">◈ LEADERBOARD</div>
+        <div id="lb-entries"></div>
+      </div>
+      <div id="minimap-wrap">
+        <div class="minimap-label">MAP</div>
+        <canvas id="minimap"></canvas>
+      </div>
+    </div>
+
+    <div id="kill-feed"></div>
+
+    <div id="stats-bar">
+      <span id="stat-kills">KILLS: 0</span>
+      <span id="stat-deaths">DEATHS: 0</span>
+      <span id="stat-time">TIME: 0:00</span>
+      <span style="color:var(--c-accent)">[ B ] SHOP</span>
+      <span id="stat-mode" style="color:var(--c-success)">CLASSIC</span>
+      <a href="index.html" style="color:var(--c-dim);text-decoration:none;font-family:var(--font-hud);font-size:10px;letter-spacing:1px">[ ESC ] MENU</a>
+    </div>
+  </div>
+
+  <div id="notif-container"></div>
+
+  <!-- Mobile D-pad -->
+  <div id="dpad">
+    <button class="dpad-btn" data-dir="up">▲</button>
+    <div class="dpad-mid">
+      <button class="dpad-btn" data-dir="left">◀</button>
+      <div class="dpad-center"></div>
+      <button class="dpad-btn" data-dir="right">▶</button>
+    </div>
+    <button class="dpad-btn" data-dir="down">▼</button>
+  </div>
+
+  <!-- Main Menu -->
+  <div id="menu-overlay" class="overlay active">
+    <div class="overlay-bg"></div>
+    <div class="overlay-content">
+      <div class="game-logo">
+        <span class="logo-hex">HEX</span><span class="logo-domain">DOMAIN</span>
+      </div>
+      <p class="game-tagline">CLASSIC MODE</p>
+
+      <div class="menu-section">
+        <label class="menu-label">RENK SEÇ</label>
+        <div id="color-options"></div>
+      </div>
+
+      <div class="menu-section">
+        <label class="menu-label">ZORLUK</label>
+        <div id="difficulty-options">
+          <button class="diff-btn" data-diff="easy">EASY</button>
+          <button class="diff-btn selected" data-diff="normal">NORMAL</button>
+          <button class="diff-btn" data-diff="hard">HARD</button>
+        </div>
+      </div>
+
+      <div class="menu-section">
+        <label class="menu-label">FPS LİMİTİ</label>
+        <div id="fps-options">
+          <button class="fps-btn" data-fps="30">30</button>
+          <button class="fps-btn selected" data-fps="0">60+</button>
+          <button class="fps-btn" data-fps="144">144</button>
+        </div>
+      </div>
+
+      <button id="btn-start" class="btn-primary">⬡ SAVAŞA GİR</button>
+
+      <div class="controls-hint">
+        <div class="hint-row"><kbd>W A S D</kbd> ya da <kbd>↑ ↓ ← →</kbd> hareket</div>
+        <div class="hint-row"><kbd>B</kbd> shop — coin ile upgrade satın al</div>
+        <div class="hint-row">Kırmızı hexlerden kaçın · Coin topla · Rakip izlerini kes</div>
+      </div>
+
+      <a href="index.html" style="font-family:var(--font-hud);font-size:10px;letter-spacing:2px;color:var(--c-dim);text-decoration:none;">← ANA MENU</a>
+    </div>
+  </div>
+
+  <!-- Death Screen -->
+  <div id="death-overlay" class="overlay">
+    <div class="overlay-bg"></div>
+    <div class="overlay-content">
+      <h2 class="death-title">ELİMİNE EDİLDİN</h2>
+      <div id="death-stats"></div>
+      <button id="btn-respawn" class="btn-primary">↺ YENİDEN BAŞLA</button>
+      <button id="btn-menu" class="btn-secondary">ANA MENU</button>
+    </div>
+  </div>
+
+  <!-- Shop Overlay -->
+  <div id="shop-overlay" class="overlay">
+    <div class="overlay-bg"></div>
+    <div class="overlay-content shop-content">
+      <div class="shop-header">
+        <span class="shop-title">⬡ UPGRADE SHOP</span>
+        <span id="shop-coins-display" class="shop-coins">⬡ 0</span>
+        <button id="btn-shop-close" class="btn-secondary">✕ KAPAT  [B]</button>
+      </div>
+      <div id="shop-items" class="shop-grid"></div>
+      <p class="shop-hint">Haritadan coin topla · Düşman öldür · Combo yakalanmalar için çarpan kazan</p>
+    </div>
+  </div>
+
+  <script src="js/storage.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/grid.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/input.js"></script>
+  <script src="js/floodfill.js"></script>
+  <script src="js/particles.js"></script>
+  <script src="js/entity.js"></script>
+  <script src="js/player.js"></script>
+  <script src="js/bot.js"></script>
+  <script src="js/powerup.js"></script>
+  <script src="js/coins.js"></script>
+  <script src="js/camera.js"></script>
+  <script src="js/renderer.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/shop.js"></script>
+  <script src="js/game.js"></script>
+  <script src="js/main.js"></script>
+
+  <!-- Mobile D-pad style -->
+  <style>
+  #dpad {
+    display: none;
+    position: fixed;
+    bottom: 60px;
+    right: 24px;
+    z-index: 50;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    opacity: 0.75;
+  }
+  @media (pointer: coarse) { #dpad { display: flex; } }
+  .dpad-mid { display: flex; gap: 2px; align-items: center; }
+  .dpad-btn {
+    width: 48px; height: 48px;
+    background: rgba(0,212,255,0.12);
+    border: 1px solid rgba(0,212,255,0.3);
+    border-radius: 8px;
+    color: rgba(0,212,255,0.8);
+    font-size: 16px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: background 0.1s;
+  }
+  .dpad-btn:active { background: rgba(0,212,255,0.3); }
+  .dpad-center { width: 48px; height: 48px; }
+  </style>
+  <script>
+  // D-pad → input
+  document.querySelectorAll('.dpad-btn').forEach(btn => {
+    const dirMap = { up:{x:0,y:-1}, down:{x:0,y:1}, left:{x:-1,y:0}, right:{x:1,y:0} };
+    btn.addEventListener('touchstart', e => {
+      e.preventDefault();
+      if (window.game?.input) window.game.input._pending = dirMap[btn.dataset.dir];
+    }, { passive: false });
+  });
+  </script>
+</body>
+</html>

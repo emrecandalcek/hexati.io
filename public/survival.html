@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HexDomain — Survival Mode</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@300;400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/ui.css">
+  <link rel="stylesheet" href="css/shop.css">
+  <style>
+    :root { --c-accent: #ff4757; --c-border: rgba(255,71,87,0.2); --glow: 0 0 12px rgba(255,71,87,0.4); }
+    #territory-fill { background: linear-gradient(90deg, #ff4757, #ff6b35); box-shadow: 0 0 8px #ff4757; }
+    #territory-pct  { color: #ff4757; }
+    .logo-hex       { color: #ff4757; text-shadow: 0 0 30px #ff4757; }
+    .btn-primary    { border-color:#ff4757; color:#ff4757; text-shadow:0 0 8px #ff4757; }
+    .btn-primary:hover { box-shadow: 0 0 24px rgba(255,71,87,0.4); }
+
+    #survival-lives {
+      position: fixed;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 24px;
+      z-index: 20;
+      pointer-events: none;
+      letter-spacing: 4px;
+      text-shadow: 0 0 12px rgba(255,71,87,0.6);
+    }
+
+    .result-score-surv {
+      font-family: 'Orbitron', monospace;
+      font-size: 64px;
+      font-weight: 900;
+      color: #ff4757;
+      text-shadow: 0 0 40px rgba(255,71,87,0.5);
+    }
+    .result-row {
+      display: flex;
+      justify-content: space-between;
+      width: 100%;
+      padding: 8px 16px;
+      background: rgba(255,255,255,0.03);
+      border-radius: 4px;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <!-- Lives display -->
+  <div id="survival-lives">♥♥♥</div>
+
+  <!-- HUD -->
+  <div id="hud">
+    <div id="score-panel">
+      <div class="hud-label">TERRITORY</div>
+      <div id="territory-bar"><div id="territory-fill"></div></div>
+      <div id="territory-pct">0%</div>
+      <div id="hud-coins" style="margin-top:6px;font-family:var(--font-hud);font-size:13px;color:#ffd700">⬡ 0</div>
+    </div>
+
+    <div id="top-center"><div id="powerup-display"></div></div>
+
+    <div id="right-panel">
+      <div id="leaderboard">
+        <div class="lb-title">◈ LEADERBOARD</div>
+        <div id="lb-entries"></div>
+      </div>
+      <div id="minimap-wrap">
+        <div class="minimap-label">MAP</div>
+        <canvas id="minimap"></canvas>
+      </div>
+    </div>
+
+    <div id="kill-feed"></div>
+
+    <div id="stats-bar">
+      <span id="stat-kills">KILLS: 0</span>
+      <span id="stat-deaths">DEATHS: 0</span>
+      <span id="stat-time">TIME: 0:00</span>
+      <span style="color:var(--c-accent)">[ B ] SHOP</span>
+      <span id="stat-mode" style="color:#ff4757">SURVIVAL W1</span>
+      <a href="index.html" style="color:var(--c-dim);text-decoration:none;font-family:var(--font-hud);font-size:10px">[ ESC ]</a>
+    </div>
+  </div>
+
+  <div id="notif-container"></div>
+
+  <!-- Main Menu -->
+  <div id="menu-overlay" class="overlay active">
+    <div class="overlay-bg"></div>
+    <div class="overlay-content">
+      <div class="game-logo">
+        <span class="logo-hex">SURVIVAL</span>
+      </div>
+      <p class="game-tagline" style="color:#ff4757;letter-spacing:4px">3 CAN · DALGALAR · SONSUZ ZOR</p>
+
+      <div style="text-align:center;font-size:12px;color:var(--c-dim);line-height:1.8">
+        3 canın var — her ölümde bir can kaybedersin<br>
+        Her 30 saniyede yeni bot eklenir + hepsi hızlanır<br>
+        Shop var · Coin topla · Combo yap<br>
+        Skoru hayatta kalma süresidir (saniye)
+      </div>
+
+      <div class="menu-section">
+        <label class="menu-label">RENK SEÇ</label>
+        <div id="color-options"></div>
+      </div>
+
+      <div class="menu-section">
+        <label class="menu-label">ZORLUK</label>
+        <div id="difficulty-options">
+          <button class="diff-btn" data-diff="easy">EASY</button>
+          <button class="diff-btn selected" data-diff="normal">NORMAL</button>
+          <button class="diff-btn" data-diff="hard">HARD</button>
+        </div>
+      </div>
+
+      <button id="btn-start" class="btn-primary">💀 HAYATTA KAL</button>
+
+      <a href="index.html" style="font-family:var(--font-hud);font-size:10px;letter-spacing:2px;color:var(--c-dim);text-decoration:none;">← ANA MENU</a>
+    </div>
+  </div>
+
+  <!-- Death Screen (per life) -->
+  <div id="death-overlay" class="overlay">
+    <div class="overlay-bg"></div>
+    <div class="overlay-content">
+      <h2 class="death-title" style="color:#ff4757">ELİMİNE EDİLDİN</h2>
+      <div id="death-stats"></div>
+      <button id="btn-respawn" class="btn-primary">↺ YENİDEN DOĞ</button>
+      <button id="btn-menu" class="btn-secondary">ANA MENU</button>
+    </div>
+  </div>
+
+  <!-- Shop -->
+  <div id="shop-overlay" class="overlay">
+    <div class="overlay-bg"></div>
+    <div class="overlay-content shop-content">
+      <div class="shop-header">
+        <span class="shop-title">⬡ UPGRADE SHOP</span>
+        <span id="shop-coins-display" class="shop-coins">⬡ 0</span>
+        <button id="btn-shop-close" class="btn-secondary">✕ KAPAT  [B]</button>
+      </div>
+      <div id="shop-items" class="shop-grid"></div>
+      <p class="shop-hint">Hayatta kalmak için güçlen!</p>
+    </div>
+  </div>
+
+  <!-- Survival End Screen -->
+  <div id="survival-end-overlay" class="overlay">
+    <div class="overlay-bg"></div>
+    <div class="overlay-content" style="gap:16px">
+      <p style="font-family:'Orbitron',monospace;font-size:11px;letter-spacing:4px;color:#ff4757">GAME OVER</p>
+      <div style="font-family:'Orbitron',monospace;font-size:9px;letter-spacing:3px;color:var(--c-dim)">HAYATTA KALMA SÜRESİ</div>
+      <div class="result-score-surv" id="surv-time-val">0:00</div>
+      <div id="surv-best-label" style="font-family:'Orbitron',monospace;font-size:13px;color:#ffd700;letter-spacing:2px">—</div>
+      <div class="result-row">
+        <span style="color:var(--c-dim)">DALGA</span>
+        <span id="surv-wave-val" style="color:#ff4757;font-family:'Orbitron',monospace;font-weight:700">1</span>
+      </div>
+      <div class="result-row">
+        <span style="color:var(--c-dim)">KILL</span>
+        <span id="surv-kills-val" style="color:var(--c-accent);font-family:'Orbitron',monospace;font-weight:700">0</span>
+      </div>
+      <button id="btn-surv-retry" class="btn-primary">↺ TEKRAR DENE</button>
+      <button id="btn-surv-lb" class="btn-secondary">◈ LIDERBOARD</button>
+      <a href="index.html" style="font-family:'Orbitron',monospace;font-size:10px;letter-spacing:2px;color:var(--c-dim);text-decoration:none;">← ANA MENU</a>
+    </div>
+  </div>
+
+  <script src="js/storage.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/grid.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/input.js"></script>
+  <script src="js/floodfill.js"></script>
+  <script src="js/particles.js"></script>
+  <script src="js/entity.js"></script>
+  <script src="js/player.js"></script>
+  <script src="js/bot.js"></script>
+  <script src="js/powerup.js"></script>
+  <script src="js/coins.js"></script>
+  <script src="js/camera.js"></script>
+  <script src="js/renderer.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/shop.js"></script>
+  <script src="js/game.js"></script>
+  <script src="js/mode-survival.js"></script>
+  <script>
+    document.getElementById('btn-surv-retry').onclick = () => {
+      document.getElementById('survival-end-overlay').classList.remove('active');
+      document.getElementById('menu-overlay').classList.add('active');
+    };
+    document.getElementById('btn-surv-lb').onclick = () => {
+      window.location.href = 'leaderboard.html';
+    };
+
+    // Override death button to use survival respawn
+    window.addEventListener('load', () => {
+      document.getElementById('btn-respawn').onclick = () => {
+        window.game.audio.resume();
+        window.game.ui.hideDeath();
+        window.game._respawnPlayer();
+      };
+    });
+  </script>
+</body>
+</html>

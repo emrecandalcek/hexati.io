@@ -1,0 +1,279 @@
+/* ============================================================
+   hub.css — Landing / Hub page styles
+   ============================================================ */
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --c-bg:      #060a10;
+  --c-accent:  #00d4ff;
+  --c-accent2: #7c3aed;
+  --c-gold:    #ffd700;
+  --c-danger:  #ff4757;
+  --c-success: #2ed573;
+  --c-text:    #c8d8e8;
+  --c-dim:     #4a6070;
+  --c-panel:   rgba(8,14,24,0.85);
+  --c-border:  rgba(0,212,255,0.15);
+  --font-hud:  'Orbitron', monospace;
+  --font-mono: 'JetBrains Mono', monospace;
+  --glow:      0 0 20px rgba(0,212,255,0.35);
+}
+
+html, body {
+  width: 100%; min-height: 100%;
+  background: var(--c-bg);
+  font-family: var(--font-mono);
+  color: var(--c-text);
+  overflow-x: hidden;
+}
+
+/* ── Canvas background ───────────────────────────────────── */
+#bg-canvas {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  opacity: 0.18;
+}
+
+.hub-wrap {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 48px 24px 80px;
+  gap: 48px;
+}
+
+/* ── Hero logo ───────────────────────────────────────────── */
+.hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  animation: fadeDown 0.8s ease both;
+}
+
+@keyframes fadeDown {
+  from { opacity:0; transform: translateY(-24px); }
+  to   { opacity:1; transform: translateY(0); }
+}
+
+.logo {
+  font-family: var(--font-hud);
+  font-size: clamp(52px, 10vw, 96px);
+  font-weight: 900;
+  letter-spacing: -4px;
+  line-height: 1;
+}
+.logo-hex    { color: var(--c-accent); text-shadow: 0 0 40px var(--c-accent), 0 0 80px rgba(0,212,255,0.3); }
+.logo-domain { color: #fff; }
+
+.tagline {
+  font-family: var(--font-hud);
+  font-size: 11px;
+  letter-spacing: 8px;
+  color: var(--c-dim);
+}
+
+/* ── Mode cards grid ─────────────────────────────────────── */
+.modes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+  width: 100%;
+  max-width: 1000px;
+  animation: fadeUp 0.9s 0.2s ease both;
+}
+
+@keyframes fadeUp {
+  from { opacity:0; transform: translateY(24px); }
+  to   { opacity:1; transform: translateY(0); }
+}
+
+.mode-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 28px 24px;
+  background: var(--c-panel);
+  border: 1px solid var(--c-border);
+  border-radius: 12px;
+  cursor: pointer;
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+  overflow: hidden;
+  backdrop-filter: blur(8px);
+}
+
+.mode-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.3s;
+  border-radius: 12px;
+}
+
+.mode-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--card-color, var(--c-accent));
+  box-shadow: 0 8px 40px rgba(0,0,0,0.4), 0 0 0 1px var(--card-color, var(--c-accent));
+}
+
+.mode-card:hover::before { opacity: 0.04; }
+
+.mode-card[data-mode="classic"] { --card-color: #00d4ff; }
+.mode-card[data-mode="classic"]::before { background: #00d4ff; }
+
+.mode-card[data-mode="arcade"]  { --card-color: #ffa502; }
+.mode-card[data-mode="arcade"]::before  { background: #ffa502; }
+
+.mode-card[data-mode="survival"] { --card-color: #ff4757; }
+.mode-card[data-mode="survival"]::before { background: #ff4757; }
+
+.mode-card[data-mode="sandbox"] { --card-color: #a29bfe; }
+.mode-card[data-mode="sandbox"]::before { background: #a29bfe; }
+
+.mode-icon {
+  font-size: 36px;
+  line-height: 1;
+}
+
+.mode-name {
+  font-family: var(--font-hud);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: var(--card-color, var(--c-accent));
+}
+
+.mode-desc {
+  font-size: 12px;
+  color: var(--c-dim);
+  line-height: 1.6;
+}
+
+.mode-badge {
+  display: inline-block;
+  font-family: var(--font-hud);
+  font-size: 8px;
+  letter-spacing: 1px;
+  padding: 3px 8px;
+  border-radius: 20px;
+  border: 1px solid var(--card-color, var(--c-accent));
+  color: var(--card-color, var(--c-accent));
+  width: fit-content;
+}
+
+/* ── Stats bar ───────────────────────────────────────────── */
+.stats-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 32px;
+  padding: 20px 32px;
+  background: var(--c-panel);
+  border: 1px solid var(--c-border);
+  border-radius: 12px;
+  width: 100%;
+  max-width: 700px;
+  animation: fadeUp 0.9s 0.4s ease both;
+  backdrop-filter: blur(8px);
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.stat-val {
+  font-family: var(--font-hud);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--c-accent);
+}
+
+.stat-lbl {
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: var(--c-dim);
+  text-transform: uppercase;
+}
+
+/* ── Footer links ────────────────────────────────────────── */
+.footer-links {
+  display: flex;
+  gap: 24px;
+  animation: fadeUp 0.9s 0.5s ease both;
+}
+
+.footer-links a {
+  font-family: var(--font-hud);
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--c-dim);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.footer-links a:hover { color: var(--c-accent); }
+
+/* ── Best scores section ─────────────────────────────────── */
+.best-section {
+  width: 100%;
+  max-width: 700px;
+  animation: fadeUp 0.9s 0.6s ease both;
+}
+
+.section-title {
+  font-family: var(--font-hud);
+  font-size: 10px;
+  letter-spacing: 3px;
+  color: var(--c-dim);
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+.best-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.best-card {
+  background: var(--c-panel);
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  padding: 14px 16px;
+  text-align: center;
+  backdrop-filter: blur(8px);
+}
+
+.best-mode {
+  font-family: var(--font-hud);
+  font-size: 8px;
+  letter-spacing: 2px;
+  color: var(--c-dim);
+  margin-bottom: 6px;
+}
+
+.best-score {
+  font-family: var(--font-hud);
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--c-gold);
+  text-shadow: 0 0 12px rgba(255,215,0,0.4);
+}
+
+.best-sub {
+  font-size: 10px;
+  color: var(--c-dim);
+  margin-top: 2px;
+}
