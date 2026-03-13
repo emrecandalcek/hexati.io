@@ -36,10 +36,10 @@ class ServerPlayer extends ServerEntity {
 
     if (this._pendingDir) { this.trySetDir(this._pendingDir); this._pendingDir = null; }
 
-    return this._step(grid, entities, room);
+    return this._step(grid, entities);
   }
 
-  _step(grid, entities, room) {
+  _step(grid, entities) {
     const events = [];
     const nx = this.x + this.dir.x, ny = this.y + this.dir.y;
     const prevX = this.x, prevY = this.y;
