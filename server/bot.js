@@ -14,7 +14,7 @@ class ServerBot extends ServerEntity {
     this.respawnCb   = null;
   }
 
-  update(dt, grid, entities, room) {
+  update(dt, grid, entities) {
     if (!this.alive) return [];
     this.tickPowerup(dt);
     this.moveTimer += dt;

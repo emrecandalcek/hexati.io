@@ -1,112 +1,165 @@
 // ============================================================
-// server.js — HexDomain Multiplayer Server
-// Express + Socket.io — Railway ready
+// server.js  —  HexDomain Multiplayer Server  v2.1
+// Difficulty-based persistent rooms  |  Railway ready
 // ============================================================
+'use strict';
+
 const express    = require('express');
 const http       = require('http');
 const { Server } = require('socket.io');
 const path       = require('path');
 
-const GameRoom   = require('./server/gameRoom');
-const CONFIG     = require('./shared/config');
+const CONFIG   = require('./shared/config');
+const GameRoom = require('./server/gameRoom');
 
 const app    = express();
 const server = http.createServer(app);
 const io     = new Server(server, {
-  cors:         { origin: '*', methods: ['GET','POST'] },
-  pingTimeout:  20000,
-  pingInterval: 10000,
+  cors:          { origin: '*', methods: ['GET', 'POST'] },
+  pingTimeout:   20000,
+  pingInterval:  10000,
+  transports:    ['websocket', 'polling'],
 });
 
-// ── Static files ─────────────────────────────────────────────
-// Serve shared/ files at /shared/
+// ── Static routes ─────────────────────────────────────────────
 app.use('/shared', express.static(path.join(__dirname, 'shared')));
-// Serve public/ at root
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ── Room manager ─────────────────────────────────────────────
-const rooms   = new Map();
-const MAX_ROOMS = 20;
+// ── Room registry ─────────────────────────────────────────────
+// Structure:  rooms  Map<roomId, GameRoom>
+// roomId format:  "<diff>_<n>"   e.g.  "easy_1", "normal_3"
+const rooms = new Map();
 
-function getOrCreateRoom(roomId) {
-  if (!rooms.has(roomId)) {
-    if (rooms.size >= MAX_ROOMS) return null;
-    const room = new GameRoom(roomId, io);
-    room.start();
-    rooms.set(roomId, room);
+function initRooms() {
+  for (const [diff, preset] of Object.entries(CONFIG.DIFFICULTIES)) {
+    for (let n = 1; n <= preset.roomsPerDiff; n++) {
+      const id   = `${diff}_${n}`;
+      const room = new GameRoom(id, diff, io);
+      room.start();
+      rooms.set(id, room);
+    }
   }
-  return rooms.get(roomId);
+  console.log(`[Server] ${rooms.size} rooms initialised`);
+  rooms.forEach((r, id) => console.log(`  ${id}  diff=${r.diff}  bots=${r.preset.botCount}`));
 }
 
-function cleanupRoom(roomId) {
-  const room = rooms.get(roomId);
-  if (room && room.isEmpty()) {
-    room.stop();
-    rooms.delete(roomId);
-    console.log(`[Server] Room ${roomId} removed`);
-  }
+// Auto-assign: pick the room for a difficulty with most players but still has space
+function pickRoom(diff) {
+  const candidates = [...rooms.values()]
+    .filter(r => r.diff === diff && r.players.size < r.preset.maxPlayers);
+  if (!candidates.length) return null;
+  // Prefer room with most players (social), fallback to first
+  return candidates.sort((a, b) => b.players.size - a.players.size)[0];
 }
 
-// ── REST API ─────────────────────────────────────────────────
+// ── REST API ──────────────────────────────────────────────────
 app.get('/api/rooms', (_req, res) => {
-  const list = [];
-  for (const [id, room] of rooms.entries()) {
-    list.push({ id, players: room.getPlayerCount(), max: CONFIG.MAX_PLAYERS_PER_ROOM });
-  }
+  const list = [...rooms.values()].map(r => r.toInfo());
   res.json(list);
 });
 
-app.get('/api/health', (_req, res) => res.json({ ok: true, rooms: rooms.size }));
+app.get('/api/health', (_req, res) => {
+  res.json({ ok: true, rooms: rooms.size, uptime: process.uptime() });
+});
 
-// ── Socket.io ────────────────────────────────────────────────
+// ── Socket.io ─────────────────────────────────────────────────
 io.on('connection', socket => {
-  console.log(`[Socket] +  ${socket.id}`);
-  let currentRoom = null;
+  console.log(`[Socket] connect  ${socket.id}`);
 
-  socket.on('room:join', ({ roomId, name, color }) => {
+  let currentRoom = null;  // GameRoom the socket is currently in
+
+  // ── Join a room ──────────────────────────────────────────
+  // Client sends: { diff, roomId?, name, color }
+  //   diff   = 'easy' | 'normal' | 'hard'   (required)
+  //   roomId = specific room id              (optional — auto-assign if omitted)
+  socket.on('room:join', ({ diff, roomId, name, color }) => {
+    // Leave previous room cleanly
     if (currentRoom) {
       currentRoom.removePlayer(socket.id);
-      cleanupRoom(currentRoom.roomId);
       currentRoom = null;
     }
 
-    const rid  = String(roomId || 'main').slice(0, 20).replace(/[^a-zA-Z0-9_-]/g, '') || 'main';
-    const room = getOrCreateRoom(rid);
-
-    if (!room) {
-      socket.emit('room:error', { msg: 'Server dolu. Lütfen daha sonra tekrar dene.' });
+    // Validate difficulty
+    if (!CONFIG.DIFFICULTIES[diff]) {
+      socket.emit('room:error', { msg: `Geçersiz zorluk: ${diff}` });
       return;
     }
 
-    const player = room.addPlayer(socket.id, name, color);
+    // Pick a room
+    let room;
+    if (roomId && rooms.has(roomId) && rooms.get(roomId).diff === diff) {
+      room = rooms.get(roomId);
+      if (room.players.size >= room.preset.maxPlayers) {
+        socket.emit('room:error', { msg: 'Bu oda dolu.' });
+        return;
+      }
+    } else {
+      room = pickRoom(diff);
+      if (!room) {
+        socket.emit('room:error', { msg: 'Tüm odalar dolu. Daha sonra tekrar dene.' });
+        return;
+      }
+    }
+
+    const player = room.addPlayer(socket.id, (name || 'PLAYER').toUpperCase().slice(0, 16), color);
     if (!player) {
-      socket.emit('room:error', { msg: 'Bu oda dolu (maks 8 oyuncu).' });
+      socket.emit('room:error', { msg: 'Odaya katılamadı.' });
       return;
     }
 
     currentRoom = room;
-    socket.emit('room:joined', { roomId: rid, playerId: player.id });
+    // room:joined is confirmation (game:init comes right after from addPlayer)
+    socket.emit('room:joined', {
+      roomId:  room.roomId,
+      diff:    room.diff,
+      players: room.players.size,
+    });
+
+    console.log(`[Socket] ${socket.id} joined room ${room.roomId}  players=${room.players.size}`);
   });
 
-  socket.on('input:dir',     dir      => currentRoom?.handleInput(socket.id, dir));
-  socket.on('shop:buy',      ({ key }) => currentRoom?.handleShopBuy(socket.id, key));
-  socket.on('player:respawn',()       => currentRoom?.handleRespawn(socket.id));
+  // ── Leave room (explicit) ────────────────────────────────
+  socket.on('room:leave', () => {
+    if (currentRoom) {
+      currentRoom.removePlayer(socket.id);
+      currentRoom = null;
+    }
+  });
 
+  // ── Game input ───────────────────────────────────────────
+  socket.on('input:dir', dir => {
+    if (currentRoom) currentRoom.handleInput(socket.id, dir);
+  });
+
+  socket.on('shop:buy', ({ key }) => {
+    if (currentRoom) currentRoom.handleShopBuy(socket.id, key);
+  });
+
+  socket.on('player:respawn', () => {
+    if (currentRoom) currentRoom.handleRespawn(socket.id);
+  });
+
+  // ── Chat ─────────────────────────────────────────────────
   socket.on('chat:msg', ({ text }) => {
     if (!currentRoom || !text) return;
     const player = currentRoom.players.get(socket.id);
     if (!player) return;
     const safe = String(text).slice(0, 80).replace(/</g, '&lt;');
-    io.to(currentRoom.roomId).emit('chat:msg', { name: player.name, color: player.color, text: safe });
+    io.to(currentRoom.roomId).emit('chat:msg', {
+      name:  player.name,
+      color: player.color,
+      text:  safe,
+    });
   });
 
+  // ── Ping/pong (latency) ──────────────────────────────────
   socket.on('ping_check', () => socket.emit('pong_check'));
 
-  socket.on('disconnect', () => {
-    console.log(`[Socket] -  ${socket.id}`);
+  // ── Disconnect ───────────────────────────────────────────
+  socket.on('disconnect', reason => {
+    console.log(`[Socket] disconnect  ${socket.id}  reason=${reason}`);
     if (currentRoom) {
       currentRoom.removePlayer(socket.id);
-      cleanupRoom(currentRoom.roomId);
       currentRoom = null;
     }
   });
@@ -114,8 +167,8 @@ io.on('connection', socket => {
 
 // ── Start ─────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3000;
+initRooms();
 server.listen(PORT, () => {
-  console.log(`\n🎮 HexDomain Multiplayer — v${CONFIG.VERSION}`);
-  console.log(`   Listening on port ${PORT}`);
+  console.log(`\n🎮 HexDomain Multiplayer  v${CONFIG.VERSION}`);
   console.log(`   http://localhost:${PORT}\n`);
 });

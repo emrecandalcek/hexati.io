@@ -16,7 +16,7 @@ class ServerPlayer extends ServerEntity {
 
   queueDir(d) { this._pendingDir = d; }
 
-  update(dt, grid, entities, room) {
+  update(dt, grid, entities) {
     if (!this.alive) return [];
     const events = [];
 
