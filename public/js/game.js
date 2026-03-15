@@ -159,8 +159,8 @@ class Game {
 
     this.shop = new Shop(this.player, this.audio, this.ui);
 
-    // Sync canvas + camera size via renderer
-    this.renderer.forceResize(this.camera);
+    // Register camera with renderer (syncs viewport size, no canvas reset)
+    this.renderer.initCamera(this.camera);
 
     const pp = Utils.hexToPixelSmooth(cx, cy);
     this.camera.snap(pp.x, pp.y);

@@ -681,8 +681,8 @@ function onGameInit({ myId: id, roomId: initRoomId, diff, preset, gridData, grid
   renderer     = new Renderer(canvas, mini);
   renderer.localPlayerId = myId;
   camera       = new Camera();
-  // Sync renderer + camera to current window size
-  renderer.forceResize(camera);
+  // Register camera — syncs vw/vh without resetting canvas
+  renderer.initCamera(camera);
   inputHandler = new InputHandler();
   audio        = audio || new AudioEngine();
 

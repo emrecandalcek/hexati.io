@@ -7,6 +7,7 @@ class Renderer {
     this.canvas  = canvas;
     this.mini    = miniCanvas;
     this.t       = 0;
+    this._camera = null;
 
     this.particles    = new ParticleSystem();
     this.minimapDirty = true;
@@ -26,41 +27,47 @@ class Renderer {
 
     this._colorMap    = {};
     this._pendingPowerups = null;
-    this.localPlayerId = 'player';  // override this in multiplayer mode
+    this.localPlayerId = 'player';
 
     // FPS tracking
     this._fpsSamples  = [];
     this._fpsDisplay  = 0;
     this._fpsTimer    = 0;
 
-    // Resize FIRST so canvas has correct pixel dimensions before getContext
-    this._resize();
-    // Get contexts AFTER resize so they're bound to correct dimensions
-    this.ctx     = canvas.getContext('2d');
-    this.mctx    = miniCanvas.getContext('2d');
-    this._miniOffCtx  = this._miniOff.getContext('2d');
+    // Set canvas size once, then get contexts — no double resize
+    this._setCanvasSize(window.innerWidth, window.innerHeight);
 
-    window.addEventListener('resize', () => this._resize());
+    // Contexts acquired once on correct-sized canvas
+    this.ctx         = canvas.getContext('2d');
+    this.mctx        = miniCanvas.getContext('2d');
+    this._miniOffCtx = this._miniOff.getContext('2d');
+
+    window.addEventListener('resize', () => {
+      this._setCanvasSize(window.innerWidth, window.innerHeight);
+      // Re-acquire context after resize (canvas reset clears it)
+      this.ctx = this.canvas.getContext('2d');
+      if (this._camera) {
+        this._camera.vw = this.canvas.width;
+        this._camera.vh = this.canvas.height;
+      }
+    });
   }
 
-  _resize() {
-    const w = window.innerWidth;
-    const h = window.innerHeight;
-    if (w === 0 || h === 0) return;  // don't resize to 0
+  _setCanvasSize(w, h) {
+    if (!w || !h) return;
     this.canvas.width  = w;
     this.canvas.height = h;
-    this.ctx = this.canvas.getContext('2d');
-    if (this._camera) {
-      this._camera.vw = w;
-      this._camera.vh = h;
-    }
   }
 
-  // Call this explicitly when you need to force a resize (e.g. multiplayer init)
-  forceResize(camera) {
+  // Call after creating renderer to sync camera viewport
+  initCamera(camera) {
     this._camera = camera;
-    this._resize();
+    camera.vw = this.canvas.width;
+    camera.vh = this.canvas.height;
   }
+
+  // Legacy alias
+  forceResize(camera) { this.initCamera(camera); }
 
   markMinimapDirty() { this.minimapDirty = true; }
 
