@@ -8,8 +8,8 @@ class Entity {
     this.color = color;
     this.x = x; this.y = y;
 
-    // Smooth pixel position (lerped toward hex target each frame)
-    const p = Utils.hexToPixel(x, y);
+    // Smooth pixel position (no row-stagger zigzag)
+    const p = Utils.hexToPixelSmooth(x, y);
     this.px = p.x; this.py = p.y;
 
     this.dir     = { x: 1, y: 0 };
@@ -48,14 +48,13 @@ class Entity {
   }
 
   snapPixelPos() {
-    const p = Utils.hexToPixel(this.x, this.y);
+    const p = Utils.hexToPixelSmooth(this.x, this.y);
     this.px = p.x; this.py = p.y;
   }
 
-  // Frame-rate-independent lerp toward target hex pixel
+  // Frame-rate-independent lerp toward smooth target (no row-stagger zigzag)
   updateLerp(dt) {
-    const target = Utils.hexToPixel(this.x, this.y);
-    // 0.28 = snappy but smooth; at 60fps this ~= 28% per frame
+    const target = Utils.hexToPixelSmooth(this.x, this.y);
     const f = 1 - Math.pow(1 - 0.28, dt / 16.667);
     this.px = Utils.lerp(this.px, target.x, f);
     this.py = Utils.lerp(this.py, target.y, f);

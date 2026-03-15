@@ -165,7 +165,7 @@ class Game {
     this.camera.vw = window.innerWidth;
     this.camera.vh = window.innerHeight;
 
-    const pp = Utils.hexToPixel(cx, cy);
+    const pp = Utils.hexToPixelSmooth(cx, cy);
     this.camera.snap(pp.x, pp.y);
     this.renderer.markMinimapDirty();
 
@@ -206,8 +206,8 @@ class Game {
     this.powerups.update(dt, this.grid);
     this.coins.update(dt, this.grid);
 
-    // Follow the grid-cell center, not the lerping px/py, to avoid stagger jitter
-    const targetPos = Utils.hexToPixel(this.player.x, this.player.y);
+    // Follow smooth position — ignores row stagger to prevent left-right jitter
+    const targetPos = Utils.hexToPixelSmooth(this.player.x, this.player.y);
     this.camera.follow(targetPos.x, targetPos.y, dt);
 
     const total = CONFIG.GRID_W * CONFIG.GRID_H;
