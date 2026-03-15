@@ -159,12 +159,18 @@ class Game {
 
     this.shop = new Shop(this.player, this.audio, this.ui);
 
+    // Force canvas + camera to correct size before snap
+    this.canvas.width  = window.innerWidth;
+    this.canvas.height = window.innerHeight;
+    this.camera.vw = window.innerWidth;
+    this.camera.vh = window.innerHeight;
+
     const pp = Utils.hexToPixel(cx, cy);
     this.camera.snap(pp.x, pp.y);
     this.renderer.markMinimapDirty();
 
     this.running  = true;
-    this.lastTime = performance.now();
+    this.lastTime = 0;
     this._accumFPS = 0;
     requestAnimationFrame(t => this._loop(t));
   }
@@ -172,6 +178,7 @@ class Game {
   _loop(now) {
     if (!this.running) return;
 
+    if (this.lastTime === 0) this.lastTime = now;
     const dt = Math.min(now - this.lastTime, 80);
     this.lastTime = now;
 

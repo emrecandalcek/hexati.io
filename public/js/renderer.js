@@ -5,9 +5,7 @@
 class Renderer {
   constructor(canvas, miniCanvas) {
     this.canvas  = canvas;
-    this.ctx     = canvas.getContext('2d');
     this.mini    = miniCanvas;
-    this.mctx    = miniCanvas.getContext('2d');
     this.t       = 0;
 
     this.particles    = new ParticleSystem();
@@ -25,7 +23,6 @@ class Renderer {
     this._miniOff     = document.createElement('canvas');
     this._miniOff.width  = CONFIG.MINIMAP_PX;
     this._miniOff.height = CONFIG.MINIMAP_PX;
-    this._miniOffCtx  = this._miniOff.getContext('2d');
 
     this._colorMap    = {};
     this._pendingPowerups = null;
@@ -35,13 +32,26 @@ class Renderer {
     this._fpsDisplay  = 0;
     this._fpsTimer    = 0;
 
+    // Resize FIRST so canvas has correct pixel dimensions before getContext
     this._resize();
+    // Get contexts AFTER resize so they're bound to correct dimensions
+    this.ctx     = canvas.getContext('2d');
+    this.mctx    = miniCanvas.getContext('2d');
+    this._miniOffCtx  = this._miniOff.getContext('2d');
+
     window.addEventListener('resize', () => this._resize());
   }
 
   _resize() {
     this.canvas.width  = window.innerWidth;
     this.canvas.height = window.innerHeight;
+    // Re-acquire context — resizing canvas resets it
+    this.ctx = this.canvas.getContext('2d');
+    // Keep camera vw/vh in sync so isVisible() culling is correct
+    if (this._camera) {
+      this._camera.vw = window.innerWidth;
+      this._camera.vh = window.innerHeight;
+    }
   }
 
   markMinimapDirty() { this.minimapDirty = true; }
@@ -53,8 +63,18 @@ class Renderer {
 
   // ── Main draw ─────────────────────────────────────────────
   draw(grid, entities, camera, dt) {
+    // Keep camera reference for resize sync
+    this._camera = camera;
+    // Ensure canvas pixel size matches window (guards against late resize)
+    if (this.canvas.width !== window.innerWidth || this.canvas.height !== window.innerHeight) {
+      this.canvas.width  = window.innerWidth;
+      this.canvas.height = window.innerHeight;
+      camera.vw = window.innerWidth;
+      camera.vh = window.innerHeight;
+    }
     this.t += 0.04;
     const ctx = this.ctx;
+    if (!ctx) return;  // context not ready yet
     const W = this.canvas.width, H = this.canvas.height;
 
     // FPS sampling
@@ -90,6 +110,7 @@ class Renderer {
   // ── Batch grid draw ───────────────────────────────────────
   _drawGrid(grid, camera, ctx) {
     const S = CONFIG.HEX_SIZE, S1 = S - 1.2;
+    const HW = CONFIG.HEX_W;  // actual hex pixel width ~34px
     const pulse = 0.5 + 0.5 * Math.sin(this.t * 3);
 
     const ownedBuckets  = {};
@@ -104,7 +125,7 @@ class Renderer {
     for (let col=0; col<grid.w; col++) {
       for (let row=0; row<grid.h; row++) {
         const wp = Utils.hexToPixel(col, row);
-        if (!camera.isVisible(wp.x, wp.y, S*2)) continue;
+        if (!camera.isVisible(wp.x, wp.y, HW * 2)) continue;
         const sp   = camera.toScreen(wp.x, wp.y);
         const cell = grid.get(col, row);
 
@@ -295,6 +316,8 @@ class Renderer {
 
   // ── Minimap ───────────────────────────────────────────────
   _drawMinimap(grid, entities) {
+    // Always rebuild colorMap before minimap (may have changed)
+    for (const e of entities) this._colorMap[e.id] = e.color;
     const PX=CONFIG.MINIMAP_PX, cw=PX/grid.w, ch=PX/grid.h;
     if (this.minimapDirty) {
       this.minimapDirty = false;

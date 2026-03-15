@@ -2,8 +2,14 @@
 // main.js — Bootstrap
 // ============================================================
 window.addEventListener('load', () => {
-  window.game = new Game();
-  console.log('%cHexDomain loaded ✔', 'color:#00d4ff;font-weight:bold;font-size:14px');
+  try {
+    window.game = new Game();
+    console.log('%cHexDomain loaded ✔', 'color:#00d4ff;font-weight:bold;font-size:14px');
+    console.log('Canvas size:', window.game.canvas.width, 'x', window.game.canvas.height);
+    console.log('CONFIG:', CONFIG.GRID_W, 'x', CONFIG.GRID_H, 'HEX_SIZE:', CONFIG.HEX_SIZE);
+  } catch(e) {
+    console.error('HexDomain INIT ERROR:', e);
+  }
 });
 
 // Save cumulative stats when leaving classic mode

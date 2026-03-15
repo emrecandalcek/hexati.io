@@ -30,7 +30,7 @@ class Camera {
   }
 
   // Is a world point visible?
-  isVisible(wx, wy, pad = 40) {
+  isVisible(wx, wy, pad = 60) {
     const sx = wx - this.x, sy = wy - this.y;
     return sx > -pad && sy > -pad && sx < this.vw + pad && sy < this.vh + pad;
   }
