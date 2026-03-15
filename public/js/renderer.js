@@ -94,8 +94,8 @@ class Renderer {
     this._colorMap = {};
     for (const e of entities) this._colorMap[e.id] = e.color;
 
-    // Lerp all entities
-    for (const e of entities) if (e.alive) e.updateLerp(dt);
+    // Lerp all entities (only Entity class instances have updateLerp)
+    for (const e of entities) if (e.alive && typeof e.updateLerp === 'function') e.updateLerp(dt);
 
     this._drawGrid(grid, camera, ctx);
     this._drawEntities(entities, camera, ctx);

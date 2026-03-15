@@ -626,6 +626,10 @@ function onGameInit({ myId: id, diff, preset, gridData, gridW, gridH, entities }
 
   renderer     = new Renderer(canvas, mini);
   camera       = new Camera();
+  // Sync camera viewport size immediately (Camera constructor reads window.innerWidth/Height but
+  // we set canvas dimensions just above so they should match — be explicit to be safe)
+  camera.vw = window.innerWidth;
+  camera.vh = window.innerHeight;
   inputHandler = new InputHandler();
   audio        = audio || new AudioEngine();
 
@@ -658,7 +662,10 @@ function onGameInit({ myId: id, diff, preset, gridData, gridW, gridH, entities }
 // ── State update from server ──────────────────────────────────
 function onGameState({ entities, patches }) {
   if (patches?.length) grid.applyPatches(patches);
-  entities.forEach(e => { entityMap[e.id] = e; });
+  entities.forEach(e => {
+    if (!e.dir) e.dir = { x: 1, y: 0 };
+    entityMap[e.id] = e;
+  });
   myEntity = entityMap[myId] || myEntity;
   updateHUD();
 }
@@ -710,6 +717,7 @@ function renderLoop(now) {
 
   // FPS cap
   if (targetFPS > 0 && now - lastFrameAt < frameInterval) return;
+  if (lastFrameAt === 0) lastFrameAt = now;
   const dt = Math.min(now - lastFrameAt, 100);
   lastFrameAt = now;
 
@@ -737,7 +745,15 @@ function renderLoop(now) {
   // Build entity array for renderer (server state, no local simulation)
   const entArr = Object.values(entityMap).map(e => {
     const pp = Utils.hexToPixel(e.x, e.y);
-    return { ...e, px: pp.x, py: pp.y };
+    return {
+      ...e,
+      px: pp.x,
+      py: pp.y,
+      // Renderer checks e.id === 'player' for local player styling
+      id: e.id === myId ? 'player' : e.id,
+      // Ensure dir always exists
+      dir: e.dir || { x: 1, y: 0 },
+    };
   });
 
   if (renderer) renderer.draw(grid, entArr, camera, dt);
