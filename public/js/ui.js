@@ -7,6 +7,11 @@ class UI {
     this.$pct     = document.getElementById('territory-pct');
     this.$lb      = document.getElementById('lb-entries');
     this.$feed    = document.getElementById('kill-feed');
+    // New stat elements (val versions)
+    this.$killsVal  = document.getElementById('stat-kills-val');
+    this.$deathsVal = document.getElementById('stat-deaths-val');
+    this.$timeVal   = document.getElementById('stat-time-val');
+    // Legacy fallbacks (hidden spans, still in DOM)
     this.$kills   = document.getElementById('stat-kills');
     this.$deaths  = document.getElementById('stat-deaths');
     this.$time    = document.getElementById('stat-time');
@@ -15,15 +20,20 @@ class UI {
     this.$death   = document.getElementById('death-overlay');
     this.$dstats  = document.getElementById('death-stats');
     this.$coins   = document.getElementById('hud-coins');
+    this.$mode    = document.getElementById('hud-mode-badge');
     this._puTimer = null;
   }
 
   updateScore(player, totalCells) {
     const pct = Math.min(100, player.territory/totalCells*100).toFixed(1);
-    this.$fill.style.width = pct+'%';
-    this.$pct.textContent  = pct+'%';
-    this.$kills.textContent  = `KILLS: ${player.totalKills}`;
-    this.$deaths.textContent = `DEATHS: ${player.deaths}`;
+    if (this.$fill)  this.$fill.style.width = pct+'%';
+    if (this.$pct)   this.$pct.textContent  = pct+'%';
+    // New compact stat vals
+    if (this.$killsVal)  this.$killsVal.textContent  = player.totalKills || 0;
+    if (this.$deathsVal) this.$deathsVal.textContent = player.deaths     || 0;
+    // Legacy hidden spans (some modes still read these)
+    if (this.$kills)  this.$kills.textContent  = `KILLS: ${player.totalKills}`;
+    if (this.$deaths) this.$deaths.textContent = `DEATHS: ${player.deaths}`;
   }
 
   updateCoins(n) {
@@ -31,7 +41,9 @@ class UI {
   }
 
   updateTime(startMs) {
-    this.$time.textContent = `TIME: ${Utils.formatTime(Date.now()-startMs)}`;
+    const t = Utils.formatTime(Date.now()-startMs);
+    if (this.$timeVal) this.$timeVal.textContent = t;
+    if (this.$time)    this.$time.textContent = `TIME: ${t}`;
   }
 
   updateLeaderboard(entities, totalCells) {

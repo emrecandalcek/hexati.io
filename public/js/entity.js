@@ -55,8 +55,8 @@ class Entity {
   // Frame-rate-independent lerp toward target hex pixel
   updateLerp(dt) {
     const target = Utils.hexToPixel(this.x, this.y);
-    // Factor scales with dt so movement speed is the same regardless of fps
-    const f = 1 - Math.pow(1 - CONFIG.LERP_BASE, dt / 16.667);
+    // 0.28 = snappy but smooth; at 60fps this ~= 28% per frame
+    const f = 1 - Math.pow(1 - 0.28, dt / 16.667);
     this.px = Utils.lerp(this.px, target.x, f);
     this.py = Utils.lerp(this.py, target.y, f);
   }

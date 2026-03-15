@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-  <title>HexDomain — Multiplayer</title>
+  <title>Hexati — Multiplayer</title>
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@300;400;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="css/ui.css">
@@ -180,35 +180,53 @@
     .topbar-sep  { color: rgba(255,255,255,0.2); }
     .topbar-ping { color: var(--c-dim); }
 
-    /* Chat */
+    /* Chat — bottom-left, above kill feed */
     #chat-box {
-      position: fixed; bottom: 48px; right: 12px;
-      width: 250px; z-index: 30;
-      display: none; flex-direction: column; gap: 4px;
+      position: fixed; bottom: 20px; left: 16px;
+      width: 260px; z-index: 30;
+      display: none; flex-direction: column; gap: 5px;
+      pointer-events: none;
     }
+    #chat-box.chat-open { pointer-events: all; }
     #chat-log {
-      max-height: 150px; overflow-y: auto;
-      display: flex; flex-direction: column-reverse; gap: 3px;
+      max-height: 130px; overflow-y: auto;
+      display: flex; flex-direction: column; gap: 3px;
+      scrollbar-width: none;
     }
+    #chat-log::-webkit-scrollbar { display: none; }
     .chat-msg {
-      font-size: 11px; padding: 3px 8px;
-      background: rgba(0,0,0,0.6); border-radius: 4px;
+      font-size: 11px; padding: 4px 10px;
+      background: rgba(0,0,0,0.65); border-radius: 5px;
       border-left: 2px solid currentColor;
       animation: fadeUp .2s ease;
+      backdrop-filter: blur(4px);
+      font-family: 'JetBrains Mono', monospace;
+      pointer-events: none;
     }
     @keyframes fadeUp { from { opacity:0; transform:translateY(4px); } }
-    #chat-row { display: flex; gap: 4px; }
-    #chat-inp {
-      flex: 1; padding: 5px 8px; font-size: 11px;
-      background: rgba(0,0,0,0.6);
-      border: 1px solid rgba(124,58,237,0.3); border-radius: 4px;
-      color: #e0e0e0; font-family: 'JetBrains Mono', monospace; outline: none;
+    #chat-row {
+      display: none; gap: 4px;
+      pointer-events: all;
     }
-    #chat-inp:focus { border-color: #7c3aed; }
+    #chat-row.visible { display: flex; }
+    #chat-inp {
+      flex: 1; padding: 6px 10px; font-size: 11px;
+      background: rgba(10,10,20,0.85);
+      border: 1px solid rgba(124,58,237,0.4); border-radius: 6px;
+      color: #e0e0e0; font-family: 'JetBrains Mono', monospace; outline: none;
+      backdrop-filter: blur(6px);
+    }
+    #chat-inp:focus { border-color: #a29bfe; }
     #chat-send {
-      padding: 5px 10px; font-size: 11px; cursor: pointer;
-      background: rgba(124,58,237,0.2);
-      border: 1px solid rgba(124,58,237,0.4); border-radius: 4px; color: #a29bfe;
+      padding: 6px 12px; font-size: 11px; cursor: pointer;
+      background: rgba(124,58,237,0.25);
+      border: 1px solid rgba(162,155,254,0.5); border-radius: 6px; color: #a29bfe;
+      font-family: 'Orbitron', sans-serif; letter-spacing: 1px;
+    }
+    #chat-hint {
+      font-family: 'Orbitron', sans-serif; font-size: 8px;
+      letter-spacing: 1px; color: rgba(162,155,254,0.4);
+      text-align: left; pointer-events: none;
     }
   </style>
 </head>
@@ -294,10 +312,38 @@
 <!-- Standard HUD -->
 <div id="hud">
   <div id="score-panel">
-    <div class="hud-label">TERRITORY</div>
+    <div class="territory-header">
+      <span class="territory-label">TERRITORY</span>
+      <span id="territory-pct" style="color:#a29bfe">0%</span>
+    </div>
     <div id="territory-bar"><div id="territory-fill" style="background:linear-gradient(90deg,#7c3aed,#a29bfe)"></div></div>
-    <div id="territory-pct" style="color:#a29bfe">0%</div>
-    <div id="hud-coins" style="margin-top:6px;font-family:'Orbitron',sans-serif;font-size:13px;color:#ffd700">⬡ 0</div>
+    <div class="hud-stats-row">
+      <div class="hud-stat">
+        <span class="hud-stat-val" id="stat-kills-val">0</span>
+        <span class="hud-stat-lbl">KILLS</span>
+      </div>
+      <div class="hud-divider"></div>
+      <div class="hud-stat">
+        <span class="hud-stat-val" id="stat-deaths-val">0</span>
+        <span class="hud-stat-lbl">ÖLÜM</span>
+      </div>
+      <div class="hud-divider"></div>
+      <div class="hud-stat">
+        <span class="hud-stat-val" id="stat-time-val">0:00</span>
+        <span class="hud-stat-lbl">SÜRE</span>
+      </div>
+      <div class="hud-divider"></div>
+      <span id="hud-coins">⬡ 0</span>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;">
+      <span id="hud-mode-badge" style="color:#a29bfe">MULTIPLAYER</span>
+      <span style="font-family:'Orbitron',sans-serif;font-size:8px;letter-spacing:1px;color:var(--c-dim);pointer-events:all">
+        <span id="fps-counter">— FPS</span>
+        &nbsp;·&nbsp;
+        <a href="#" id="btn-leave" style="color:var(--c-dim);text-decoration:none">[ESC]</a>
+        &nbsp;[B] SHOP
+      </span>
+    </div>
   </div>
   <div id="top-center"><div id="powerup-display"></div></div>
   <div id="right-panel">
@@ -305,31 +351,32 @@
       <div class="lb-title">◈ LEADERBOARD</div>
       <div id="lb-entries"></div>
     </div>
-    <div id="minimap-wrap">
-      <div class="minimap-label">MAP</div>
-      <canvas id="minimap"></canvas>
-    </div>
+  </div>
+  <div id="minimap-wrap">
+    <div class="minimap-label">MAP</div>
+    <canvas id="minimap"></canvas>
   </div>
   <div id="kill-feed"></div>
-  <div id="stats-bar">
-    <span id="stat-kills">KILLS: 0</span>
-    <span id="stat-deaths">DEATHS: 0</span>
-    <span id="stat-time">TIME: 0:00</span>
-    <span style="color:#a29bfe">[ B ] SHOP</span>
-    <span id="fps-counter" style="color:var(--c-dim)">— FPS</span>
-    <a href="#" id="btn-leave" style="color:var(--c-dim);text-decoration:none;font-family:'Orbitron',sans-serif;font-size:10px">[ ESC ] ÇIK</a>
+  <div style="display:none">
+    <span id="stat-kills"></span>
+    <span id="stat-deaths"></span>
+    <span id="stat-time"></span>
+    <span id="stat-mode"></span>
+  </div>
+  <div id="stats-bar" style="display:none"></div>
   </div>
 </div>
 
 <div id="notif-container"></div>
 
-<!-- Chat -->
+<!-- Chat — bottom-left -->
 <div id="chat-box">
   <div id="chat-log"></div>
   <div id="chat-row">
-    <input id="chat-inp" placeholder="[T] Mesaj..." maxlength="80">
+    <input id="chat-inp" placeholder="Mesaj yaz..." maxlength="80">
     <button id="chat-send">↵</button>
   </div>
+  <div id="chat-hint">[T] sohbet</div>
 </div>
 
 <!-- Death overlay -->
@@ -376,7 +423,7 @@
 
 <script>
 // ════════════════════════════════════════════════════════════
-//  HexDomain Multiplayer Client  v2.1
+//  Hexati Multiplayer Client  v2.1
 //  Architecture:
 //    - Server runs all game logic at 20 tick/sec
 //    - Server pushes state (entity positions + grid patches) at 10/sec
@@ -740,10 +787,10 @@ function renderLoop(now) {
     if (dir) socket?.emit('input:dir', dir);
   }
 
-  // Camera follow
+  // Camera follow — use grid position not px/py to avoid stagger jitter
   if (myEntity && camera) {
     const pp = Utils.hexToPixel(myEntity.x, myEntity.y);
-    camera.follow(pp.x, pp.y);
+    camera.follow(pp.x, pp.y, dt);
   }
 
   // Build entity array for renderer (server state, no local simulation)
@@ -766,23 +813,33 @@ function updateHUD() {
   if (!myEntity) return;
   const total = CONFIG.GRID_W * CONFIG.GRID_H;
   const pct   = Math.min(100, myEntity.territory / total * 100).toFixed(1);
-  document.getElementById('territory-fill').style.width = pct + '%';
-  document.getElementById('territory-pct').textContent  = pct + '%';
-  document.getElementById('stat-kills').textContent     = `KILLS: ${localKills}`;
-  document.getElementById('stat-deaths').textContent    = `DEATHS: ${localDeaths}`;
-  document.getElementById('stat-time').textContent      = `TIME: ${Utils.formatTime(Date.now() - startTime)}`;
-  document.getElementById('hud-coins').textContent      = `⬡ ${myEntity.coins || 0}`;
+  const fill = document.getElementById('territory-fill');
+  const pctEl = document.getElementById('territory-pct');
+  if (fill) fill.style.width = pct + '%';
+  if (pctEl) pctEl.textContent = pct + '%';
 
-  // Player count
+  const kv = document.getElementById('stat-kills-val');
+  const dv = document.getElementById('stat-deaths-val');
+  const tv = document.getElementById('stat-time-val');
+  if (kv) kv.textContent = localKills;
+  if (dv) dv.textContent = localDeaths;
+  if (tv) tv.textContent = Utils.formatTime(Date.now() - startTime);
+
+  const coins = document.getElementById('hud-coins');
+  if (coins) coins.textContent = `⬡ ${myEntity.coins || 0}`;
+
+  // Player count topbar
   const humans = Object.values(entityMap).filter(e => !e.isBot).length;
-  document.getElementById('tb-players').textContent = `👥 ${humans}`;
+  const tbp = document.getElementById('tb-players');
+  if (tbp) tbp.textContent = `👥 ${humans}`;
 
   // Leaderboard
   const sorted = Object.values(entityMap)
     .filter(e => e.alive)
     .sort((a, b) => b.territory - a.territory)
     .slice(0, 8);
-  document.getElementById('lb-entries').innerHTML = sorted.map((e, i) => {
+  const lb = document.getElementById('lb-entries');
+  if (lb) lb.innerHTML = sorted.map((e, i) => {
     const p = (e.territory / total * 100).toFixed(1);
     return `<div class="lb-row${e.id===myId?' lb-player':''}">
       <span class="lb-rank">${i+1}</span>
@@ -891,21 +948,44 @@ function addChat(name, color, text) {
   const el  = document.createElement('div');
   el.className = 'chat-msg'; el.style.color = color;
   el.innerHTML = `<strong>${name}:</strong> ${text}`;
-  log.prepend(el);
-  while (log.children.length > 40) log.lastChild.remove();
+  log.appendChild(el);
+  log.scrollTop = log.scrollHeight;
+  while (log.children.length > 40) log.firstChild.remove();
+  // Auto-hide hint when messages arrive
+  const hint = document.getElementById('chat-hint');
+  if (hint) hint.style.display = 'none';
 }
-document.getElementById('chat-inp').addEventListener('focus', () => chatFocused = true);
-document.getElementById('chat-inp').addEventListener('blur',  () => chatFocused = false);
+
+function openChatInput() {
+  chatFocused = true;
+  const row = document.getElementById('chat-row');
+  if (row) row.classList.add('visible');
+  const hint = document.getElementById('chat-hint');
+  if (hint) hint.style.display = 'none';
+  setTimeout(() => document.getElementById('chat-inp')?.focus(), 10);
+}
+
+function closeChatInput() {
+  chatFocused = false;
+  const row = document.getElementById('chat-row');
+  if (row) row.classList.remove('visible');
+}
+
+document.getElementById('chat-inp').addEventListener('focus', () => { chatFocused = true; });
+document.getElementById('chat-inp').addEventListener('blur',  () => { chatFocused = false; closeChatInput(); });
 document.getElementById('chat-inp').addEventListener('keydown', e => {
   if (e.key === 'Enter') {
     const t = document.getElementById('chat-inp').value.trim();
     if (t) { socket?.emit('chat:msg', { text: t }); document.getElementById('chat-inp').value = ''; }
+    closeChatInput();
   }
+  if (e.key === 'Escape') closeChatInput();
   e.stopPropagation();
 });
 document.getElementById('chat-send').onclick = () => {
   const t = document.getElementById('chat-inp').value.trim();
   if (t) { socket?.emit('chat:msg', { text: t }); document.getElementById('chat-inp').value = ''; }
+  closeChatInput();
 };
 
 // ── Keyboard shortcuts ────────────────────────────────────────
@@ -913,7 +993,7 @@ document.addEventListener('keydown', e => {
   if (chatFocused) return;
   if (!gameActive) return;
   if (e.key === 'b' || e.key === 'B') shopOpen ? closeShop() : openShop();
-  if (e.key === 't' || e.key === 'T') document.getElementById('chat-inp').focus();
+  if (e.key === 't' || e.key === 'T') openChatInput();
   if (e.key === 'Escape') { if (shopOpen) closeShop(); else goToLobby(); }
 });
 

@@ -1,35 +1,43 @@
 // ============================================================
-// camera.js — Smooth-following viewport
+// camera.js — Smooth-following viewport (jitter-free)
 // ============================================================
 class Camera {
   constructor() {
-    this.x = 0;   // world-px of viewport top-left
+    this.x = 0;
     this.y = 0;
-    this.tw = 0;  // target
-    this.th = 0;
+    this.tx = 0;  // smooth target
+    this.ty = 0;
     this.vw = window.innerWidth;
     this.vh = window.innerHeight;
-    this.smooth = 0.12;
+    // Higher = snappier, lower = floatier.  0.10–0.14 feels smooth.
+    this.smooth = 0.10;
+    // Separate x/y smooth so diagonal moves don't double-jitter
+    this._vx = 0;
+    this._vy = 0;
   }
 
   resize(w, h) { this.vw = w; this.vh = h; }
 
-  // Snap camera to target immediately (no lerp)
   snap(wx, wy) {
-    this.x = wx - this.vw * 0.5;
-    this.y = wy - this.vh * 0.5;
-    this.tw = this.x;
-    this.th = this.y;
+    this.tx = wx - this.vw * 0.5;
+    this.ty = wy - this.vh * 0.5;
+    this.x  = this.tx;
+    this.y  = this.ty;
+    this._vx = 0;
+    this._vy = 0;
   }
 
-  follow(wx, wy) {
-    this.tw = wx - this.vw * 0.5;
-    this.th = wy - this.vh * 0.5;
-    this.x = Utils.lerp(this.x, this.tw, this.smooth);
-    this.y = Utils.lerp(this.y, this.th, this.smooth);
+  // Frame-rate-independent exponential smoothing
+  follow(wx, wy, dt) {
+    this.tx = wx - this.vw * 0.5;
+    this.ty = wy - this.vh * 0.5;
+    // Use dt for frame-rate independence; fallback to 16ms if not provided
+    const ms = dt || 16.667;
+    const f  = 1 - Math.pow(1 - this.smooth, ms / 16.667);
+    this.x = this.x + (this.tx - this.x) * f;
+    this.y = this.y + (this.ty - this.y) * f;
   }
 
-  // Is a world point visible?
   isVisible(wx, wy, pad = 60) {
     const sx = wx - this.x, sy = wy - this.y;
     return sx > -pad && sy > -pad && sx < this.vw + pad && sy < this.vh + pad;

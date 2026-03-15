@@ -37,7 +37,7 @@ class Game {
 
   _applySettings() {
     try {
-      const s = JSON.parse(localStorage.getItem('hexdomain_settings') || '{}');
+      const s = JSON.parse(localStorage.getItem('hexati_settings') || '{}');
       if (s.fpsLimit !== undefined) {
         this.fpsLimit = s.fpsLimit;
         this._fpsInterval = s.fpsLimit > 0 ? 1000 / s.fpsLimit : 0;
@@ -205,7 +205,10 @@ class Game {
     }
     this.powerups.update(dt, this.grid);
     this.coins.update(dt, this.grid);
-    this.camera.follow(this.player.px, this.player.py);
+
+    // Follow the grid-cell center, not the lerping px/py, to avoid stagger jitter
+    const targetPos = Utils.hexToPixel(this.player.x, this.player.y);
+    this.camera.follow(targetPos.x, targetPos.y, dt);
 
     const total = CONFIG.GRID_W * CONFIG.GRID_H;
     this.ui.updateScore(this.player, total);

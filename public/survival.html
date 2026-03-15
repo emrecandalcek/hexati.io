@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>HexDomain — Survival Mode</title>
+  <title>Hexati — Survival Mode</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@300;400;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
@@ -56,10 +56,33 @@
   <!-- HUD -->
   <div id="hud">
     <div id="score-panel">
-      <div class="hud-label">TERRITORY</div>
+      <div class="territory-header">
+        <span class="territory-label">TERRITORY</span>
+        <span id="territory-pct">0%</span>
+      </div>
       <div id="territory-bar"><div id="territory-fill"></div></div>
-      <div id="territory-pct">0%</div>
-      <div id="hud-coins" style="margin-top:6px;font-family:var(--font-hud);font-size:13px;color:#ffd700">⬡ 0</div>
+      <div class="hud-stats-row">
+        <div class="hud-stat">
+          <span class="hud-stat-val" id="stat-kills-val">0</span>
+          <span class="hud-stat-lbl">KILLS</span>
+        </div>
+        <div class="hud-divider"></div>
+        <div class="hud-stat">
+          <span class="hud-stat-val" id="stat-deaths-val">0</span>
+          <span class="hud-stat-lbl">ÖLÜM</span>
+        </div>
+        <div class="hud-divider"></div>
+        <div class="hud-stat">
+          <span class="hud-stat-val" id="stat-time-val">0:00</span>
+          <span class="hud-stat-lbl">SÜRE</span>
+        </div>
+        <div class="hud-divider"></div>
+        <span id="hud-coins">⬡ 0</span>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <span id="hud-mode-badge">MODE</span>
+        <a href="index.html" style="font-family:var(--font-hud);font-size:8px;letter-spacing:1px;color:var(--c-dim);text-decoration:none;pointer-events:all">[ESC]</a>
+      </div>
     </div>
 
     <div id="top-center"><div id="powerup-display"></div></div>
@@ -69,22 +92,22 @@
         <div class="lb-title">◈ LEADERBOARD</div>
         <div id="lb-entries"></div>
       </div>
-      <div id="minimap-wrap">
-        <div class="minimap-label">MAP</div>
-        <canvas id="minimap"></canvas>
-      </div>
+    </div>
+
+    <div id="minimap-wrap">
+      <div class="minimap-label">MAP</div>
+      <canvas id="minimap"></canvas>
     </div>
 
     <div id="kill-feed"></div>
 
-    <div id="stats-bar">
-      <span id="stat-kills">KILLS: 0</span>
-      <span id="stat-deaths">DEATHS: 0</span>
-      <span id="stat-time">TIME: 0:00</span>
-      <span style="color:var(--c-accent)">[ B ] SHOP</span>
-      <span id="stat-mode" style="color:#ff4757">SURVIVAL W1</span>
-      <a href="index.html" style="color:var(--c-dim);text-decoration:none;font-family:var(--font-hud);font-size:10px">[ ESC ]</a>
+    <div style="display:none">
+      <span id="stat-kills"></span>
+      <span id="stat-deaths"></span>
+      <span id="stat-time"></span>
+      <span id="stat-mode"></span>
     </div>
+    <div id="stats-bar" style="display:none"></div>
   </div>
 
   <div id="notif-container"></div>
