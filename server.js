@@ -109,19 +109,30 @@ io.on('connection', socket => {
 
     currentRoom = room;
 
-    // ── 1. room:joined first — client knows it's accepted ────
+    // Send game:init directly — contains all info client needs
+    // room:joined sent first as lightweight confirmation, game:init follows immediately
     socket.emit('room:joined', {
       roomId:  room.roomId,
       diff:    room.diff,
       players: room.players.size,
     });
 
-    // ── 2. game:init second — client has room context now ────
-    if (typeof room.sendInitTo === 'function') {
-      room.sendInitTo(socket.id, socket);
-    } else {
-      room._sendInit(socket.id, player._pid || player.id, socket);
-    }
+    // game:init carries full state — send after a tick so room:joined arrives first
+    setImmediate(() => {
+      const p = room.players.get(socket.id);
+      if (!p) return;
+      socket.emit('game:init', {
+        myId:     p._pid || p.id,
+        roomId:   room.roomId,
+        diff:     room.diff,
+        preset:   room.preset,
+        gridData: room.grid.serialize(),
+        gridW:    CONFIG.GRID_W,
+        gridH:    CONFIG.GRID_H,
+        entities: room.entities.map(e => e.toState()),
+      });
+      console.log(`[Socket] game:init sent to ${socket.id} myId=${p._pid || p.id}`);
+    });
 
     console.log(`[Socket] ${socket.id} joined room ${room.roomId}  players=${room.players.size}`);
   });

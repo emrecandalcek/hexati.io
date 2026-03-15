@@ -612,20 +612,7 @@ function connectSocket() {
   socket.on('room:joined', ({ roomId, diff }) => {
     myDiff   = diff;
     myRoomId = roomId;
-    // Hide lobby immediately — show loading screen
-    const lobbyEl = document.getElementById('lobby');
-    lobbyEl.classList.add('hidden');
-    lobbyEl.style.display = 'none';
-    // Show a loading overlay while game:init arrives
-    const dbg = document.getElementById('debug-overlay');
-    if (dbg) {
-      dbg.style.background = 'rgba(6,10,20,0.97)';
-      dbg.style.color = '#a29bfe';
-      dbg.style.fontSize = '16px';
-      dbg.style.padding = '32px 48px';
-      dbg.textContent = '⬡ ODA BULUNDU — OYUN YÜKLENİYOR...';
-      dbg.style.display = 'block';
-    }
+    // game:init will arrive in the next tick and handle everything
   });
 
   socket.on('room:error', ({ msg }) => {
