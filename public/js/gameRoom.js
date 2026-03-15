@@ -98,10 +98,13 @@ class GameRoom {
   }
 
   // Send game:init to a specific socket (called from server.js after room:joined)
-  sendInitTo(socketId) {
+  sendInitTo(socketId, socketObj) {
     const player = this.players.get(socketId);
-    if (!player) return;
-    this._sendInit(socketId, player._pid || player.id);
+    if (!player) {
+      console.error(`[Room ${this.roomId}] sendInitTo: player not found for ${socketId}`);
+      return;
+    }
+    this._sendInit(socketId, player._pid || player.id, socketObj);
   }
 
   removePlayer(socketId) {
@@ -193,9 +196,13 @@ class GameRoom {
   }
 
   // ── Initial full snapshot ─────────────────────────────────
-  _sendInit(socketId, myId) {
-    const socket = this.io.sockets.sockets.get(socketId);
-    if (!socket) return;
+  _sendInit(socketId, myId, socketObj) {
+    // Accept socket object directly to avoid lookup failure
+    const socket = socketObj || this.io.sockets.sockets.get(socketId);
+    if (!socket) {
+      console.error(`[Room ${this.roomId}] _sendInit: socket not found for ${socketId}`);
+      return;
+    }
     socket.emit('game:init', {
       myId,
       roomId:   this.roomId,
@@ -206,6 +213,7 @@ class GameRoom {
       gridH:    CONFIG.GRID_H,
       entities: this.entities.map(e => e.toState()),
     });
+    console.log(`[Room ${this.roomId}] game:init sent to ${socketId} myId=${myId}`);
   }
 
   // ── Powerup helpers ───────────────────────────────────────

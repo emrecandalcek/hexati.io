@@ -117,12 +117,10 @@ io.on('connection', socket => {
     });
 
     // ── 2. game:init second — client has room context now ────
-    // Use sendInitTo which looks up the player's id internally
     if (typeof room.sendInitTo === 'function') {
-      room.sendInitTo(socket.id);
+      room.sendInitTo(socket.id, socket);
     } else {
-      // Fallback for older gameRoom versions
-      room._sendInit(socket.id, player._pid || player.id);
+      room._sendInit(socket.id, player._pid || player.id, socket);
     }
 
     console.log(`[Socket] ${socket.id} joined room ${room.roomId}  players=${room.players.size}`);
