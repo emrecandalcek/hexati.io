@@ -379,6 +379,9 @@
   <div id="chat-hint">[T] sohbet</div>
 </div>
 
+<!-- Debug overlay -->
+<div id="debug-overlay" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.9);color:#00ff00;font-family:monospace;font-size:13px;padding:16px 24px;border:1px solid #00ff00;border-radius:8px;z-index:9999;text-align:center;max-width:90vw;word-break:break-all;"></div>
+
 <!-- Death overlay -->
 <div id="death-overlay" class="overlay">
   <div class="overlay-bg"></div>
@@ -714,6 +717,15 @@ function onGameInit({ myId: id, roomId: initRoomId, diff, preset, gridData, grid
 
   buildShopUI();
   lastFrameAt = performance.now();
+
+  // DEBUG: show render status on screen
+  const dbg = document.getElementById('debug-overlay');
+  if (dbg) {
+    dbg.textContent = `INIT OK | canvas:${renderer.canvas.width}x${renderer.canvas.height} | ctx:${!!renderer.ctx} | entities:${Object.keys(entityMap).length} | myId:${myId?.slice(0,8)}`;
+    dbg.style.display = 'block';
+    setTimeout(() => { dbg.style.display = 'none'; }, 5000);
+  }
+
   requestAnimationFrame(renderLoop);
 }
 
@@ -815,7 +827,22 @@ function renderLoop(now) {
     };
   });
 
-  if (renderer) renderer.draw(grid, entArr, camera, dt);
+  if (renderer) {
+    renderer.draw(grid, entArr, camera, dt);
+    // Debug: count frames drawn
+    if (!window._dbgFrames) window._dbgFrames = 0;
+    window._dbgFrames++;
+    if (window._dbgFrames === 10) {
+      const dbg = document.getElementById('debug-overlay');
+      if (dbg && dbg.style.display === 'none') {
+        const W = renderer.canvas.width, H = renderer.canvas.height;
+        const ctx = renderer.ctx;
+        dbg.textContent = `10 FRAMES OK | canvas:${W}x${H} | ctx:${!!ctx} | camX:${camera?.x?.toFixed(0)} camY:${camera?.y?.toFixed(0)} | entities:${entArr.length}`;
+        dbg.style.display = 'block';
+        setTimeout(() => { dbg.style.display = 'none'; }, 6000);
+      }
+    }
+  }
 }
 
 // ── HUD ───────────────────────────────────────────────────────
