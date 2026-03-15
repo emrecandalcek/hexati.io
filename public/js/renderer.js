@@ -26,6 +26,7 @@ class Renderer {
 
     this._colorMap    = {};
     this._pendingPowerups = null;
+    this.localPlayerId = 'player';  // override this in multiplayer mode
 
     // FPS tracking
     this._fpsSamples  = [];
@@ -214,7 +215,7 @@ class Renderer {
       if (!e.alive) continue;
       if (!camera.isVisible(e.px, e.py)) continue;
       const sp = camera.toScreen(e.px, e.py);
-      const isPlayer = e.id === 'player';
+      const isPlayer = e.id === this.localPlayerId;
       const r = isPlayer ? 11 : 8;
 
       // Ghost glow
@@ -316,8 +317,12 @@ class Renderer {
 
   // ── Minimap ───────────────────────────────────────────────
   _drawMinimap(grid, entities) {
-    // Always rebuild colorMap before minimap (may have changed)
-    for (const e of entities) this._colorMap[e.id] = e.color;
+    if (!entities || entities.length === 0) return;
+
+    // Build a fresh color lookup guaranteed to match current entities
+    const colorLookup = {};
+    for (const e of entities) colorLookup[e.id] = e.color;
+
     const PX=CONFIG.MINIMAP_PX, cw=PX/grid.w, ch=PX/grid.h;
     if (this.minimapDirty) {
       this.minimapDirty = false;
@@ -330,7 +335,7 @@ class Renderer {
           mc.fillStyle='rgba(255,50,50,0.5)';
           mc.fillRect(col*cw, row*ch, cw+0.5, ch+0.5);
         } else if (c.owner) {
-          const color = this._colorMap[c.owner];
+          const color = colorLookup[c.owner];
           if (color) { mc.fillStyle=color; mc.fillRect(col*cw,row*ch,cw+0.5,ch+0.5); }
         }
       }
@@ -339,9 +344,10 @@ class Renderer {
     mc.drawImage(this._miniOff,0,0);
     for (const e of entities) {
       if (!e.alive) continue;
+      const isLocal = e.id === this.localPlayerId;
       mc.beginPath();
-      mc.arc(e.x*cw, e.y*ch, e.id==='player'?3:2, 0, Math.PI*2);
-      mc.fillStyle = e.id==='player'?'#fff':e.color;
+      mc.arc(e.x*cw, e.y*ch, isLocal?3:2, 0, Math.PI*2);
+      mc.fillStyle = isLocal ? '#fff' : e.color;
       mc.fill();
     }
   }
