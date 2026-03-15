@@ -675,18 +675,14 @@ function onGameInit({ myId: id, roomId: initRoomId, diff, preset, gridData, grid
 
   // Boot renderer & camera
   const canvas = document.getElementById('game');
-  canvas.width  = window.innerWidth;
-  canvas.height = window.innerHeight;
   const mini = document.getElementById('minimap');
   mini.width = mini.height = CONFIG.MINIMAP_PX;
 
   renderer     = new Renderer(canvas, mini);
-  renderer.localPlayerId = myId;  // tell renderer which entity is the local player
+  renderer.localPlayerId = myId;
   camera       = new Camera();
-  // Sync camera viewport size immediately (Camera constructor reads window.innerWidth/Height but
-  // we set canvas dimensions just above so they should match — be explicit to be safe)
-  camera.vw = window.innerWidth;
-  camera.vh = window.innerHeight;
+  // Sync renderer + camera to current window size
+  renderer.forceResize(camera);
   inputHandler = new InputHandler();
   audio        = audio || new AudioEngine();
 

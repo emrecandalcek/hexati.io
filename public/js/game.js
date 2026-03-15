@@ -159,11 +159,8 @@ class Game {
 
     this.shop = new Shop(this.player, this.audio, this.ui);
 
-    // Force canvas + camera to correct size before snap
-    this.canvas.width  = window.innerWidth;
-    this.canvas.height = window.innerHeight;
-    this.camera.vw = window.innerWidth;
-    this.camera.vh = window.innerHeight;
+    // Sync canvas + camera size via renderer
+    this.renderer.forceResize(this.camera);
 
     const pp = Utils.hexToPixelSmooth(cx, cy);
     this.camera.snap(pp.x, pp.y);

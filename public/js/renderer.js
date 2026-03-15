@@ -15,7 +15,7 @@ class Renderer {
     this.showFPS      = true;
     this.showParticles = true;
     try {
-      const s = JSON.parse(localStorage.getItem('hexdomain_settings') || '{}');
+      const s = JSON.parse(localStorage.getItem('hexati_settings') || '{}');
       if (s.showFPS    !== undefined) this.showFPS       = s.showFPS;
       if (s.particles  !== undefined) this.showParticles = s.particles;
     } catch(e) {}
@@ -44,15 +44,22 @@ class Renderer {
   }
 
   _resize() {
-    this.canvas.width  = window.innerWidth;
-    this.canvas.height = window.innerHeight;
-    // Re-acquire context — resizing canvas resets it
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    if (w === 0 || h === 0) return;  // don't resize to 0
+    this.canvas.width  = w;
+    this.canvas.height = h;
     this.ctx = this.canvas.getContext('2d');
-    // Keep camera vw/vh in sync so isVisible() culling is correct
     if (this._camera) {
-      this._camera.vw = window.innerWidth;
-      this._camera.vh = window.innerHeight;
+      this._camera.vw = w;
+      this._camera.vh = h;
     }
+  }
+
+  // Call this explicitly when you need to force a resize (e.g. multiplayer init)
+  forceResize(camera) {
+    this._camera = camera;
+    this._resize();
   }
 
   markMinimapDirty() { this.minimapDirty = true; }
@@ -64,19 +71,12 @@ class Renderer {
 
   // ── Main draw ─────────────────────────────────────────────
   draw(grid, entities, camera, dt) {
-    // Keep camera reference for resize sync
     this._camera = camera;
-    // Ensure canvas pixel size matches window (guards against late resize)
-    if (this.canvas.width !== window.innerWidth || this.canvas.height !== window.innerHeight) {
-      this.canvas.width  = window.innerWidth;
-      this.canvas.height = window.innerHeight;
-      camera.vw = window.innerWidth;
-      camera.vh = window.innerHeight;
-    }
     this.t += 0.04;
     const ctx = this.ctx;
-    if (!ctx) return;  // context not ready yet
+    if (!ctx) return;
     const W = this.canvas.width, H = this.canvas.height;
+    if (W === 0 || H === 0) return;
 
     // FPS sampling
     this._fpsTimer += dt;
