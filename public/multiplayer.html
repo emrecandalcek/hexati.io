@@ -644,7 +644,7 @@ function connectSocket() {
       myEntity = entity;
       document.getElementById('death-overlay').classList.remove('active');
       if (camera) {
-        const pp = Utils.hexToPixelSmooth(entity.x, entity.y);
+        const pp = Utils.hexToPixel(entity.x, entity.y);
         camera.snap(pp.x, pp.y);
       }
     }
@@ -704,7 +704,7 @@ function onGameInit(data) {
 
   const snapX = myEntity ? myEntity.x : (gridW >> 1);
   const snapY = myEntity ? myEntity.y : (gridH >> 1);
-  const sp = Utils.hexToPixelSmooth(snapX, snapY);
+  const sp = Utils.hexToPixel(snapX, snapY);
   camera.snap(sp.x, sp.y);
 
   // 5. Other systems
@@ -826,13 +826,13 @@ function renderLoop(now) {
 
   // Camera follow — use grid position not px/py to avoid stagger jitter
   if (myEntity && camera) {
-    const pp = Utils.hexToPixelSmooth(myEntity.x, myEntity.y);
+    const pp = Utils.hexToPixel(myEntity.x, myEntity.y);
     camera.follow(pp.x, pp.y, dt);
   }
 
   // Build entity array for renderer (server state, no local simulation)
   const entArr = Object.values(entityMap).map(e => {
-    const pp = Utils.hexToPixelSmooth(e.x, e.y);
+    const pp = Utils.hexToPixel(e.x, e.y);
     return {
       ...e,
       px: pp.x,

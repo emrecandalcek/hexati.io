@@ -10,6 +10,15 @@ const Utils = {
     return { x, y };
   },
 
+  // Smooth version for camera/lerp — ignores row stagger to prevent zigzag
+  hexToPixelSmooth(col, row) {
+    const w = CONFIG.HEX_W;
+    const h = CONFIG.HEX_H;
+    const x = col * w + w * 0.5;
+    const y = row * h * 0.75;
+    return { x, y };
+  },
+
   randInt(min, max) {
     return (Math.random() * (max - min + 1) | 0) + min;
   },
