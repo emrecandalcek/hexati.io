@@ -673,91 +673,88 @@ function connectSocket() {
 
 // ── Game init ─────────────────────────────────────────────────
 function onGameInit(data) {
-  // Support both { myId } and { id } field names for robustness
-  const id         = data.myId || data.id;
-  const initRoomId = data.roomId;
-  const { diff, preset, gridData, gridW, gridH, entities } = data;
-
+  const id = data.myId || data.id;
   if (!id) {
-    console.error('[onGameInit] No player id received! data keys:', Object.keys(data));
     const dbg = document.getElementById('debug-overlay');
-    if (dbg) { dbg.textContent = 'ERROR: No myId in game:init! Keys: ' + Object.keys(data).join(', '); dbg.style.display = 'block'; }
+    if (dbg) { dbg.textContent = 'ERROR: myId missing. Keys: ' + Object.keys(data).join(', '); dbg.style.display = 'block'; }
     return;
   }
 
-  myId = id;
-  if (initRoomId) myRoomId = initRoomId;
+  // 1. State
+  myId     = id;
+  myRoomId = data.roomId || myRoomId;
+  const { diff, gridData, gridW, gridH, entities } = data;
 
-  // Hide loading overlay
-  const dbgEl = document.getElementById('debug-overlay');
-  if (dbgEl) dbgEl.style.display = 'none';
-
-  CONFIG.GRID_W = gridW; CONFIG.GRID_H = gridH;
+  CONFIG.GRID_W = gridW;
+  CONFIG.GRID_H = gridH;
   grid = new Grid(gridW, gridH);
   grid.deserialize(gridData);
 
   entityMap = {};
-  entities.forEach(e => { entityMap[e.id] = e; });
-  myEntity = entityMap[myId];
+  entities.forEach(e => { if (!e.dir) e.dir = {x:1,y:0}; entityMap[e.id] = e; });
+  myEntity = entityMap[myId] || null;
 
-  // Boot renderer & camera
+  // 2. Canvas — size it explicitly before creating Renderer
   const canvas = document.getElementById('game');
+  canvas.width  = window.innerWidth;
+  canvas.height = window.innerHeight;
   const mini = document.getElementById('minimap');
   mini.width = mini.height = CONFIG.MINIMAP_PX;
 
-  renderer     = new Renderer(canvas, mini);
+  // 3. Renderer — gets ctx from already-sized canvas
+  renderer = new Renderer(canvas, mini);
   renderer.localPlayerId = myId;
-  camera       = new Camera();
-  // Register camera — syncs vw/vh without resetting canvas
-  renderer.initCamera(camera);
+  renderer.markMinimapDirty();
+
+  // 4. Camera — set vw/vh manually, no resize
+  camera = new Camera();
+  camera.vw = canvas.width;
+  camera.vh = canvas.height;
+  renderer._camera = camera;
+
+  const snapX = myEntity ? myEntity.x : (gridW >> 1);
+  const snapY = myEntity ? myEntity.y : (gridH >> 1);
+  const sp = Utils.hexToPixelSmooth(snapX, snapY);
+  camera.snap(sp.x, sp.y);
+
+  // 5. Other systems
   inputHandler = new InputHandler();
-  audio        = audio || new AudioEngine();
+  audio = audio || new AudioEngine();
 
-  if (myEntity) {
-    const pp = Utils.hexToPixelSmooth(myEntity.x, myEntity.y);
-    camera.snap(pp.x, pp.y);
-  }
-
-  // Hide lobby, show game — force style in case classList doesn't work
-  const lobbyEl = document.getElementById('lobby');
-  lobbyEl.classList.add('hidden');
-  lobbyEl.style.display = 'none';
+  // 6. Show game UI
+  document.getElementById('lobby').classList.add('hidden');
+  document.getElementById('lobby').style.display = 'none';
   document.getElementById('mp-topbar').classList.remove('hidden');
   document.getElementById('chat-box').style.display = 'flex';
-
-  // Re-enable play button for future reconnects
   document.getElementById('btn-play').disabled = false;
+  document.getElementById('debug-overlay').style.display = 'none';
 
-  // Update topbar
-  const p = CONFIG.DIFFICULTIES[diff] || {};
-  document.getElementById('tb-diff').textContent  = (p.icon || '') + ' ' + (p.label || diff);
-  document.getElementById('tb-diff').style.color  = p.color || '#fff';
-  document.getElementById('tb-room').textContent  = myRoomId?.toUpperCase() || '';
+  const pr = CONFIG.DIFFICULTIES[diff] || {};
+  document.getElementById('tb-diff').textContent = (pr.icon||'') + ' ' + (pr.label||diff.toUpperCase());
+  document.getElementById('tb-diff').style.color = pr.color || '#fff';
+  document.getElementById('tb-room').textContent = (myRoomId||'').toUpperCase();
 
+  // 7. Game loop
   gameActive  = true;
   startTime   = Date.now();
   localKills  = 0;
   localDeaths = 0;
+  lastFrameAt = 0;
+  window._dbgFrames = 0;
 
   buildShopUI();
-  lastFrameAt = performance.now();
 
-  // DEBUG: show render status on screen
-  const dbg = document.getElementById('debug-overlay');
-  if (dbg) {
-    dbg.textContent = `INIT OK | canvas:${renderer.canvas.width}x${renderer.canvas.height} | ctx:${!!renderer.ctx} | entities:${Object.keys(entityMap).length} | myId:${myId?.slice(0,8)}`;
-    dbg.style.display = 'block';
-    setTimeout(() => { dbg.style.display = 'none'; }, 5000);
-  }
+  console.log(`[Game] INIT OK myId=${myId} entities=${Object.keys(entityMap).length} canvas=${canvas.width}x${canvas.height} myEntity=${!!myEntity} camX=${camera.x.toFixed(0)} camY=${camera.y.toFixed(0)}`);
 
   requestAnimationFrame(renderLoop);
 }
 
 // ── State update from server ──────────────────────────────────
 function onGameState({ entities, patches }) {
+  if (!gameActive) return;  // ignore state updates before game:init completes
   if (patches?.length) {
     grid.applyPatches(patches);
-    if (renderer) renderer.markMinimapDirty();  // grid changed → redraw minimap
+    if (renderer) renderer.markMinimapDirty();
   }
   entities.forEach(e => {
     if (!e.dir) e.dir = { x: 1, y: 0 };
@@ -769,6 +766,7 @@ function onGameState({ entities, patches }) {
 
 // ── Game events from server ───────────────────────────────────
 function onGameEvents(evs) {
+  if (!gameActive) return;
   evs.forEach(ev => {
     if (ev.type === 'kill') {
       const killer = entityMap[ev.killer];
@@ -833,6 +831,9 @@ function renderLoop(now) {
     if (dir) socket?.emit('input:dir', dir);
   }
 
+  // Re-sync myEntity every frame (state updates may have refreshed it)
+  if (myId) myEntity = entityMap[myId] || myEntity;
+
   // Camera follow — use grid position not px/py to avoid stagger jitter
   if (myEntity && camera) {
     const pp = Utils.hexToPixelSmooth(myEntity.x, myEntity.y);
@@ -853,19 +854,6 @@ function renderLoop(now) {
 
   if (renderer) {
     renderer.draw(grid, entArr, camera, dt);
-    // Debug: count frames drawn
-    if (!window._dbgFrames) window._dbgFrames = 0;
-    window._dbgFrames++;
-    if (window._dbgFrames === 10) {
-      const dbg = document.getElementById('debug-overlay');
-      if (dbg && dbg.style.display === 'none') {
-        const W = renderer.canvas.width, H = renderer.canvas.height;
-        const ctx = renderer.ctx;
-        dbg.textContent = `10 FRAMES OK | canvas:${W}x${H} | ctx:${!!ctx} | camX:${camera?.x?.toFixed(0)} camY:${camera?.y?.toFixed(0)} | entities:${entArr.length}`;
-        dbg.style.display = 'block';
-        setTimeout(() => { dbg.style.display = 'none'; }, 6000);
-      }
-    }
   }
 }
 
