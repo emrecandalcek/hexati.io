@@ -1,5 +1,5 @@
 // ============================================================
-// server.js  —  HexDomain Multiplayer Server  v2.1
+// server.js  —  Hexati Multiplayer Server  v2.1
 // Difficulty-based persistent rooms  |  Railway ready
 // ============================================================
 'use strict';
@@ -188,6 +188,6 @@ io.on('connection', socket => {
 const PORT = process.env.PORT || 3000;
 initRooms();
 server.listen(PORT, () => {
-  console.log(`\n🎮 HexDomain Multiplayer  v${CONFIG.VERSION}`);
+  console.log(`\n🎮 Hexati Multiplayer  v${CONFIG.VERSION}`);
   console.log(`   http://localhost:${PORT}\n`);
 });

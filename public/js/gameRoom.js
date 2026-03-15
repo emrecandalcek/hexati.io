@@ -94,6 +94,25 @@ class GameRoom {
 
     console.log(`[Room ${this.roomId}] +player  ${name}  id=${pid}  total=${this.players.size}`);
     player._pid = pid;
+
+    // Send game:init after a tick — works with both old and new server.js versions
+    setImmediate(() => {
+      const sock = this.io.sockets.sockets.get(socketId);
+      if (sock) {
+        sock.emit('game:init', {
+          myId:     pid,
+          roomId:   this.roomId,
+          diff:     this.diff,
+          preset:   this.preset,
+          gridData: this.grid.serialize(),
+          gridW:    CONFIG.GRID_W,
+          gridH:    CONFIG.GRID_H,
+          entities: this.entities.map(e => e.toState()),
+        });
+        console.log(`[Room ${this.roomId}] game:init sent to ${socketId}`);
+      }
+    });
+
     return player;
   }
 
