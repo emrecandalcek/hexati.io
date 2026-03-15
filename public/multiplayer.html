@@ -609,14 +609,22 @@ function connectSocket() {
   socket.on('room:joined', ({ roomId, diff }) => {
     myDiff   = diff;
     myRoomId = roomId;
-    // game:init arrives right after from server
+    // Show loading state — game:init is coming right after
+    const chip = document.getElementById('conn-chip');
+    if (chip) {
+      chip.className = 'chip-ok';
+      chip.textContent = '✓ ODA BULUNDU — Oyun yükleniyor...';
+    }
   });
 
   socket.on('room:error', ({ msg }) => {
+    const chip = document.getElementById('conn-chip');
     chip.className = 'chip-err';
     chip.textContent = '✗ ' + msg;
     document.getElementById('btn-play').disabled = false;
-    document.getElementById('lobby').classList.remove('hidden');
+    const lobbyEl = document.getElementById('lobby');
+    lobbyEl.classList.remove('hidden');
+    lobbyEl.style.display = '';
     gameActive = false;
   });
 
@@ -653,8 +661,9 @@ function connectSocket() {
 }
 
 // ── Game init ─────────────────────────────────────────────────
-function onGameInit({ myId: id, diff, preset, gridData, gridW, gridH, entities }) {
+function onGameInit({ myId: id, roomId: initRoomId, diff, preset, gridData, gridW, gridH, entities }) {
   myId = id;
+  if (initRoomId) myRoomId = initRoomId;  // ensure myRoomId is set from game:init payload
 
   CONFIG.GRID_W = gridW; CONFIG.GRID_H = gridH;
   grid = new Grid(gridW, gridH);
@@ -686,10 +695,15 @@ function onGameInit({ myId: id, diff, preset, gridData, gridW, gridH, entities }
     camera.snap(pp.x, pp.y);
   }
 
-  // Hide lobby, show game
-  document.getElementById('lobby').classList.add('hidden');
+  // Hide lobby, show game — force style in case classList doesn't work
+  const lobbyEl = document.getElementById('lobby');
+  lobbyEl.classList.add('hidden');
+  lobbyEl.style.display = 'none';
   document.getElementById('mp-topbar').classList.remove('hidden');
   document.getElementById('chat-box').style.display = 'flex';
+
+  // Re-enable play button for future reconnects
+  document.getElementById('btn-play').disabled = false;
 
   // Update topbar
   const p = CONFIG.DIFFICULTIES[diff] || {};
@@ -875,7 +889,17 @@ function goToLobby() {
   document.getElementById('mp-topbar').classList.add('hidden');
   document.getElementById('chat-box').style.display = 'none';
   document.getElementById('hud').style.display = '';
-  document.getElementById('lobby').classList.remove('hidden');
+  // Restore lobby — remove both class and inline style
+  const lobbyEl = document.getElementById('lobby');
+  lobbyEl.classList.remove('hidden');
+  lobbyEl.style.display = '';
+  // Reset chip and play button
+  const chip = document.getElementById('conn-chip');
+  if (socket?.connected) {
+    chip.className = 'chip-ok';
+    chip.textContent = '✓ BAĞLANDI — Oyna düğmesine bas';
+    document.getElementById('btn-play').disabled = false;
+  }
   loadRooms();
 }
 document.getElementById('btn-leave').onclick = (e) => { e.preventDefault(); goToLobby(); };
