@@ -93,9 +93,15 @@ class GameRoom {
     socket?.to(this.roomId).emit('game:playerJoined', { entity: player.toState() });
 
     console.log(`[Room ${this.roomId}] +player  ${name}  id=${pid}  total=${this.players.size}`);
-    // Return pid so server.js can call sendInit after room:joined
     player._pid = pid;
     return player;
+  }
+
+  // Send game:init to a specific socket (called from server.js after room:joined)
+  sendInitTo(socketId) {
+    const player = this.players.get(socketId);
+    if (!player) return;
+    this._sendInit(socketId, player._pid || player.id);
   }
 
   removePlayer(socketId) {

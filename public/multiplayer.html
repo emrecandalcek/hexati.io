@@ -664,9 +664,21 @@ function connectSocket() {
 }
 
 // ── Game init ─────────────────────────────────────────────────
-function onGameInit({ myId: id, roomId: initRoomId, diff, preset, gridData, gridW, gridH, entities }) {
+function onGameInit(data) {
+  // Support both { myId } and { id } field names for robustness
+  const id         = data.myId || data.id;
+  const initRoomId = data.roomId;
+  const { diff, preset, gridData, gridW, gridH, entities } = data;
+
+  if (!id) {
+    console.error('[onGameInit] No player id received! data keys:', Object.keys(data));
+    const dbg = document.getElementById('debug-overlay');
+    if (dbg) { dbg.textContent = 'ERROR: No myId in game:init! Keys: ' + Object.keys(data).join(', '); dbg.style.display = 'block'; }
+    return;
+  }
+
   myId = id;
-  if (initRoomId) myRoomId = initRoomId;  // ensure myRoomId is set from game:init payload
+  if (initRoomId) myRoomId = initRoomId;
 
   CONFIG.GRID_W = gridW; CONFIG.GRID_H = gridH;
   grid = new Grid(gridW, gridH);

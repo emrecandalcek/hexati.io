@@ -1,5 +1,5 @@
 // ============================================================
-// server.js  —  Hexati Multiplayer Server  v2.1
+// server.js  —  HexDomain Multiplayer Server  v2.1
 // Difficulty-based persistent rooms  |  Railway ready
 // ============================================================
 'use strict';
@@ -108,15 +108,22 @@ io.on('connection', socket => {
     }
 
     currentRoom = room;
-    // room:joined is confirmation (game:init comes right after from addPlayer)
+
+    // ── 1. room:joined first — client knows it's accepted ────
     socket.emit('room:joined', {
       roomId:  room.roomId,
       diff:    room.diff,
       players: room.players.size,
     });
 
-    // game:init after room:joined so client has room context
-    room._sendInit(socket.id, player._pid);
+    // ── 2. game:init second — client has room context now ────
+    // Use sendInitTo which looks up the player's id internally
+    if (typeof room.sendInitTo === 'function') {
+      room.sendInitTo(socket.id);
+    } else {
+      // Fallback for older gameRoom versions
+      room._sendInit(socket.id, player._pid || player.id);
+    }
 
     console.log(`[Socket] ${socket.id} joined room ${room.roomId}  players=${room.players.size}`);
   });
@@ -172,6 +179,6 @@ io.on('connection', socket => {
 const PORT = process.env.PORT || 3000;
 initRooms();
 server.listen(PORT, () => {
-  console.log(`\n🎮 Hexati Multiplayer  v${CONFIG.VERSION}`);
+  console.log(`\n🎮 HexDomain Multiplayer  v${CONFIG.VERSION}`);
   console.log(`   http://localhost:${PORT}\n`);
 });
