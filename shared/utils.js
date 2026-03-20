@@ -10,13 +10,10 @@ const Utils = {
     return { x, y };
   },
 
-  // Smooth version for camera/lerp — ignores row stagger to prevent zigzag
+  // Yalnızca geriye dönük uyumluluk için korunuyor.
+  // v2.2 sonrası hexToPixel kullanılır (zigzag fix).
   hexToPixelSmooth(col, row) {
-    const w = CONFIG.HEX_W;
-    const h = CONFIG.HEX_H;
-    const x = col * w + w * 0.5;
-    const y = row * h * 0.75;
-    return { x, y };
+    return this.hexToPixel(col, row);
   },
 
   randInt(min, max) {

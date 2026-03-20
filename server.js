@@ -14,7 +14,7 @@ const cookieParser = require('cookie-parser');
 const CONFIG      = require('./shared/config');
 const GameRoom    = require('./server/gameRoom');
 const Auth        = require('./server/auth');
-const { Users, Logs, Stats, ServerConfig } = require('./server/db');
+const { Users, Logs, Stats, ServerConfig, SessionStore } = require('./server/db');
 
 const app    = express();
 const server = http.createServer(app);

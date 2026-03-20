@@ -1,6 +1,6 @@
 // ============================================================
-// grid.js — HEXATİ Grid (client-side, single-player modlar)
-// O(1) sayaçlar + tehlike bölgeleri + coin + powerup
+// grid.js — HEXATİ Grid (client-side, tek oyuncu modlar)
+// shared/grid.js ile API uyumlu — applyPatches + serialize
 // ============================================================
 class Grid {
   constructor(w, h) {
@@ -55,18 +55,15 @@ class Grid {
   }
 
   setTrail(x, y, id) {
-    const c = this.get(x, y);
-    if (c) c.trail = id;
+    const c = this.get(x, y); if (c) c.trail = id;
   }
 
   setCoin(x, y, val) {
-    const c = this.get(x, y);
-    if (c) c.coin = val;
+    const c = this.get(x, y); if (c) c.coin = val;
   }
 
   setPowerup(x, y, type) {
-    const c = this.get(x, y);
-    if (c) c.powerup = type;
+    const c = this.get(x, y); if (c) c.powerup = type;
   }
 
   spawnDangerZones(count) {
@@ -79,5 +76,51 @@ class Grid {
       const c = this.get(x, y);
       if (c && !c.owner && !c.danger) { c.danger = true; placed++; }
     }
+  }
+
+  // ── Multiplayer uyumlu metodlar ──────────────────────────
+
+  // Sunucu'dan gelen delta patch'lerini uygula
+  applyPatches(patches) {
+    for (const [idx, owner, trail, powerup, coin, danger] of patches) {
+      const c = this._data[idx];
+      if (!c) continue;
+      const prevOwner = c.owner;
+      c.owner   = owner   || null;
+      c.trail   = trail   || null;
+      c.powerup = powerup || null;
+      c.coin    = coin    || 0;
+      c.danger  = danger  === 1;
+      if (prevOwner !== c.owner) {
+        if (prevOwner) this._counts.set(prevOwner, Math.max(0, (this._counts.get(prevOwner) || 0) - 1));
+        if (c.owner)   this._counts.set(c.owner, (this._counts.get(c.owner) || 0) + 1);
+      }
+    }
+  }
+
+  // İlk tam sync için deserialize
+  deserialize(data) {
+    this._counts.clear();
+    for (let i = 0; i < data.length; i++) {
+      const [owner, trail, powerup, coin, danger] = data[i];
+      const c   = this._data[i];
+      c.owner   = owner   || null;
+      c.trail   = trail   || null;
+      c.powerup = powerup || null;
+      c.coin    = coin    || 0;
+      c.danger  = danger  === 1;
+      if (c.owner) this._counts.set(c.owner, (this._counts.get(c.owner) || 0) + 1);
+    }
+  }
+
+  // Tam seri hale getir (test/debug için)
+  serialize() {
+    return this._data.map(c => [
+      c.owner   || 0,
+      c.trail   || 0,
+      c.powerup || 0,
+      c.coin    || 0,
+      c.danger  ? 1 : 0,
+    ]);
   }
 }

@@ -1,18 +1,14 @@
 // ============================================================
-// server/auth.js — HEXATİ kimlik doğrulama
-// bcryptjs şifre hash + JWT benzeri token sistemi
+// server/auth.js — HEXATİ kimlik doğrulama  v2.3
+// bcryptjs hash + kalıcı token store (restart-safe)
 // ============================================================
 'use strict';
 
-const bcrypt = require('bcryptjs');
-const crypto = require('crypto');
-const { Users, Logs } = require('./db');
+const bcrypt  = require('bcryptjs');
+const crypto  = require('crypto');
+const { SessionStore } = require('./db');
 
-const SECRET       = process.env.JWT_SECRET || 'hexati_secret_' + Math.random().toString(36);
 const TOKEN_EXPIRY = 7 * 24 * 3600 * 1000; // 7 gün
-
-// Aktif token → {username, role, exp} haritası (bellek)
-const activeSessions = new Map();
 
 const Auth = {
   async hashPassword(pw) {
@@ -23,11 +19,13 @@ const Auth = {
     return bcrypt.compare(pw, hash);
   },
 
-  generateToken(username, role) {
+  generateToken(username, role, ip = '') {
     const token = crypto.randomBytes(32).toString('hex');
-    activeSessions.set(token, {
-      username, role,
-      exp: Date.now() + TOKEN_EXPIRY,
+    SessionStore.set(token, {
+      username,
+      role,
+      ip,
+      exp:       Date.now() + TOKEN_EXPIRY,
       createdAt: Date.now(),
     });
     return token;
@@ -35,56 +33,45 @@ const Auth = {
 
   verifyToken(token) {
     if (!token) return null;
-    const sess = activeSessions.get(token);
-    if (!sess) return null;
-    if (sess.exp < Date.now()) { activeSessions.delete(token); return null; }
-    return sess;
+    return SessionStore.get(token); // null if expired or not found
   },
 
   revokeToken(token) {
-    activeSessions.delete(token);
+    SessionStore.delete(token);
   },
 
   revokeAllForUser(username) {
-    for (const [tok, sess] of activeSessions) {
-      if (sess.username === username) activeSessions.delete(tok);
-    }
+    SessionStore.deleteAllForUser(username);
   },
 
   getActiveSessions() {
-    const now = Date.now();
-    const result = [];
-    for (const [tok, sess] of activeSessions) {
-      if (sess.exp < now) { activeSessions.delete(tok); continue; }
-      result.push({ ...sess, tokenPreview: tok.slice(0, 8) + '...' });
-    }
-    return result;
+    return SessionStore.getAll();
   },
 
   activeSessionCount() {
-    const now = Date.now();
-    let count = 0;
-    for (const [tok, sess] of activeSessions) {
-      if (sess.exp < now) activeSessions.delete(tok);
-      else count++;
-    }
-    return count;
+    return SessionStore.count();
   },
 
-  // Express middleware: token'ı cookie veya Authorization header'dan al
+  // Express middleware — cookie veya Authorization header'dan token al
   middleware(req, res, next) {
-    const token = req.cookies?.hexati_token ||
-                  (req.headers.authorization || '').replace('Bearer ', '');
-    const sess = Auth.verifyToken(token);
-    if (sess) {
-      req.session_user = sess;
+    const raw   = req.headers.authorization || '';
+    const token = req.cookies?.hexati_token || raw.replace('Bearer ', '').trim();
+    if (token) {
+      const sess = Auth.verifyToken(token);
+      if (sess) req.session_user = sess;
     }
     next();
   },
 
-  // Admin erişim kontrolü
   requireAdmin(req, res, next) {
     if (!req.session_user || req.session_user.role !== 'admin') {
+      return res.status(403).json({ error: 'Yetersiz yetki' });
+    }
+    next();
+  },
+
+  requireMod(req, res, next) {
+    if (!req.session_user || !['admin','moderator'].includes(req.session_user.role)) {
       return res.status(403).json({ error: 'Yetersiz yetki' });
     }
     next();

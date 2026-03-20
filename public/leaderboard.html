@@ -11,79 +11,91 @@
 <body>
 <div class="page-wrap">
 
-  <!-- Header -->
   <div class="page-header">
     <a href="index.html" class="back-btn">← GERİ</a>
     <div class="page-title">◈ LİDERBOARD</div>
-  </div>
-
-  <!-- Overall stats -->
-  <div class="panel">
-    <div class="panel-head">
-      <span class="panel-label">GENEL İSTATİSTİKLER</span>
-      <button class="btn-sm danger" onclick="clearAll()">TÜM SKORLARI SİL</button>
-    </div>
-    <div class="stats-grid" id="stats-grid">
-      <div class="stat-box"><div class="stat-box-val" id="sg-games">0</div><div class="stat-box-lbl">TOPLAM OYUN</div></div>
-      <div class="stat-box"><div class="stat-box-val" id="sg-kills">0</div><div class="stat-box-lbl">TOPLAM KILL</div></div>
-      <div class="stat-box"><div class="stat-box-val" id="sg-deaths">0</div><div class="stat-box-lbl">TOPLAM ÖLÜM</div></div>
-      <div class="stat-box"><div class="stat-box-val" id="sg-capture">0</div><div class="stat-box-lbl">KAPTÜRILEN HÜCRE</div></div>
-      <div class="stat-box"><div class="stat-box-val" id="sg-time">0:00</div><div class="stat-box-lbl">TOPLAM SÜRE</div></div>
-      <div class="stat-box"><div class="stat-box-val" id="sg-kd">—</div><div class="stat-box-lbl">K/D ORANI</div></div>
+    <div class="tab-nav" style="width:auto;margin-left:auto">
+      <button class="tab-btn active" id="tab-local"  onclick="switchSource('local',this)">🖥 LOKAL</button>
+      <button class="tab-btn"        id="tab-global" onclick="switchSource('global',this)">🌐 GLOBAL</button>
     </div>
   </div>
 
-  <!-- Tabs -->
-  <div class="tab-nav">
-    <button class="tab-btn active" onclick="switchTab('classic',this)">⬡ CLASSIC</button>
-    <button class="tab-btn" onclick="switchTab('arcade',this)">⏱ ARCADE</button>
-    <button class="tab-btn" onclick="switchTab('survival',this)">💀 SURVIVAL</button>
+  <!-- LOKAL bölüm -->
+  <div id="local-section">
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-label">GENEL İSTATİSTİKLER</span>
+        <button class="btn-sm danger" onclick="clearAll()">TÜM SKORLARI SİL</button>
+      </div>
+      <div class="stats-grid" id="stats-grid">
+        <div class="stat-box"><div class="stat-box-val" id="sg-games">0</div><div class="stat-box-lbl">TOPLAM OYUN</div></div>
+        <div class="stat-box"><div class="stat-box-val" id="sg-kills">0</div><div class="stat-box-lbl">TOPLAM KILL</div></div>
+        <div class="stat-box"><div class="stat-box-val" id="sg-deaths">0</div><div class="stat-box-lbl">TOPLAM ÖLÜM</div></div>
+        <div class="stat-box"><div class="stat-box-val" id="sg-capture">0</div><div class="stat-box-lbl">KAPTÜRILEN HÜCRE</div></div>
+        <div class="stat-box"><div class="stat-box-val" id="sg-time">0:00</div><div class="stat-box-lbl">TOPLAM SÜRE</div></div>
+        <div class="stat-box"><div class="stat-box-val" id="sg-kd">—</div><div class="stat-box-lbl">K/D ORANI</div></div>
+      </div>
+    </div>
+
+    <div class="tab-nav">
+      <button class="tab-btn active" onclick="switchTab('classic',this)">⬡ CLASSIC</button>
+      <button class="tab-btn" onclick="switchTab('arcade',this)">⏱ ARCADE</button>
+      <button class="tab-btn" onclick="switchTab('survival',this)">💀 SURVIVAL</button>
+    </div>
+
+    <div class="panel" id="table-classic">
+      <div class="panel-head"><span class="panel-label">CLASSIC — EN İYİ 10</span><button class="btn-sm" onclick="clearMode('classic')">SİL</button></div>
+      <div id="body-classic"></div>
+    </div>
+    <div class="panel" id="table-arcade" style="display:none">
+      <div class="panel-head"><span class="panel-label">ARCADE — EN İYİ 10</span><button class="btn-sm" onclick="clearMode('arcade')">SİL</button></div>
+      <div id="body-arcade"></div>
+    </div>
+    <div class="panel" id="table-survival" style="display:none">
+      <div class="panel-head"><span class="panel-label">SURVIVAL — EN İYİ 10</span><button class="btn-sm" onclick="clearMode('survival')">SİL</button></div>
+      <div id="body-survival"></div>
+    </div>
   </div>
 
-  <!-- Score tables -->
-  <div class="panel" id="table-classic">
-    <div class="panel-head">
-      <span class="panel-label">CLASSIC — EN İYİ 10</span>
-      <button class="btn-sm" onclick="clearMode('classic')">SİL</button>
+  <!-- GLOBAL bölüm -->
+  <div id="global-section" style="display:none">
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-label">GLOBAL SIRALAMA — KAYITLl OYUNCULAR</span>
+        <button class="btn-sm" onclick="loadGlobal()">↻ YENİLE</button>
+      </div>
+      <div id="global-loading" style="padding:24px;text-align:center;color:var(--c-dim)">Yükleniyor...</div>
+      <div id="global-table" style="overflow-x:auto;display:none">
+        <table class="score-table">
+          <thead><tr><th>#</th><th>OYUNCU</th><th>KILL</th><th>OYUN</th><th>CLASSIC EN İYİ</th></tr></thead>
+          <tbody id="global-body"></tbody>
+        </table>
+      </div>
+      <div id="global-error" style="display:none;padding:24px;text-align:center;color:var(--c-dim)">
+        Global sıralama için sunucuya bağlanılamadı. Lokal sekmesi kullanılabilir.
+      </div>
     </div>
-    <div id="body-classic"></div>
-  </div>
-
-  <div class="panel" id="table-arcade" style="display:none">
-    <div class="panel-head">
-      <span class="panel-label">ARCADE — EN İYİ 10</span>
-      <button class="btn-sm" onclick="clearMode('arcade')">SİL</button>
-    </div>
-    <div id="body-arcade"></div>
-  </div>
-
-  <div class="panel" id="table-survival" style="display:none">
-    <div class="panel-head">
-      <span class="panel-label">SURVIVAL — EN İYİ 10</span>
-      <button class="btn-sm" onclick="clearMode('survival')">SİL</button>
-    </div>
-    <div id="body-survival"></div>
   </div>
 
 </div>
 
-<div class="toast" id="toast">Skorlar silindi</div>
+<div class="toast" id="toast">İşlem tamamlandı</div>
 
 <script>
-  const MODES = { classic: '⬡', arcade: '⏱', survival: '💀' };
+  let currentSource = 'local';
 
   function loadKey(k, def) {
-    try { const v = localStorage.getItem('hexati_' + k); return v ? JSON.parse(v) : def; } catch(e) { return def; }
+    try { const v = localStorage.getItem('hexati_' + k); return v ? JSON.parse(v) : def; } catch { return def; }
   }
 
   function loadStats() {
     const s = loadKey('stats', {});
-    document.getElementById('sg-games').textContent   = s.gamesPlayed || 0;
-    document.getElementById('sg-kills').textContent   = s.totalKills  || 0;
-    document.getElementById('sg-deaths').textContent  = s.totalDeaths || 0;
-    document.getElementById('sg-capture').textContent = s.totalCapture|| 0;
-    const ms = s.timePlayed || 0;
-    const m = Math.floor(ms/60000), sec = Math.floor((ms%60000)/1000);
+    document.getElementById('sg-games').textContent   = s.gamesPlayed  || 0;
+    document.getElementById('sg-kills').textContent   = s.totalKills   || 0;
+    document.getElementById('sg-deaths').textContent  = s.totalDeaths  || 0;
+    document.getElementById('sg-capture').textContent = s.totalCapture || 0;
+    const ms  = s.timePlayed || 0;
+    const m   = Math.floor(ms / 60000), sec = Math.floor((ms % 60000) / 1000);
     document.getElementById('sg-time').textContent = `${m}:${String(sec).padStart(2,'0')}`;
     const kd = s.totalDeaths ? (s.totalKills / s.totalDeaths).toFixed(2) : (s.totalKills || 0);
     document.getElementById('sg-kd').textContent = kd;
@@ -92,46 +104,70 @@
   function renderTable(mode) {
     const scores = loadKey('scores_' + mode, []);
     const el = document.getElementById('body-' + mode);
-    if (!scores.length) {
-      el.innerHTML = '<div class="no-scores">Henüz skor yok. Oynamaya başla!</div>';
-      return;
-    }
+    if (!scores.length) { el.innerHTML = '<div class="no-scores">Henüz skor yok.</div>'; return; }
+
     const rankClass = i => i === 0 ? 'rank-1' : i === 1 ? 'rank-2' : i === 2 ? 'rank-3' : '';
     const rankEmoji = i => i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1);
-    const fmtDate = ts => {
-      const d = new Date(ts);
-      return `${d.getDate().toString().padStart(2,'0')}.${(d.getMonth()+1).toString().padStart(2,'0')}.${d.getFullYear()}`;
-    };
+    const fmtDate   = ts => { const d = new Date(ts); return `${d.getDate().toString().padStart(2,'0')}.${(d.getMonth()+1).toString().padStart(2,'0')}.${d.getFullYear()}`; };
 
     let html = '<table class="score-table"><thead><tr>';
     if (mode === 'classic')  html += '<th>#</th><th>SKOR</th><th>KILL</th><th>ÖLÜM</th><th>TARİH</th>';
     if (mode === 'arcade')   html += '<th>#</th><th>SKOR %</th><th>KILL</th><th>TARİH</th>';
     if (mode === 'survival') html += '<th>#</th><th>SÜRE</th><th>DALGA</th><th>KILL</th><th>TARİH</th>';
     html += '</tr></thead><tbody>';
-
     scores.forEach((s, i) => {
-      html += `<tr class="${rankClass(i)}">`;
-      html += `<td><span class="rank-badge">${rankEmoji(i)}</span></td>`;
+      html += `<tr class="${rankClass(i)}"><td><span class="rank-badge">${rankEmoji(i)}</span></td>`;
       if (mode === 'classic')  html += `<td class="score-val">${s.score}%</td><td>${s.kills||0}</td><td>${s.deaths||0}</td>`;
       if (mode === 'arcade')   html += `<td class="score-val">${s.score}%</td><td>${s.kills||0}</td>`;
-      if (mode === 'survival') {
-        const sec = s.score, m = Math.floor(sec/60), ss = sec % 60;
-        html += `<td class="score-val">${m}:${String(ss).padStart(2,'0')}</td><td>${s.wave||1}</td><td>${s.kills||0}</td>`;
-      }
-      html += `<td style="color:var(--c-dim);font-size:11px">${fmtDate(s.date||0)}</td>`;
-      html += '</tr>';
+      if (mode === 'survival') { const sec=s.score, m2=Math.floor(sec/60), ss=sec%60; html += `<td class="score-val">${m2}:${String(ss).padStart(2,'0')}</td><td>${s.wave||1}</td><td>${s.kills||0}</td>`; }
+      html += `<td style="color:var(--c-dim);font-size:11px">${fmtDate(s.date||0)}</td></tr>`;
     });
     html += '</tbody></table>';
     el.innerHTML = html;
   }
 
   function switchTab(mode, btn) {
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('#local-section .tab-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
-    ['classic','arcade','survival'].forEach(m => {
-      document.getElementById('table-' + m).style.display = m === mode ? '' : 'none';
-    });
+    ['classic','arcade','survival'].forEach(m => { document.getElementById('table-'+m).style.display = m===mode?'':'none'; });
     renderTable(mode);
+  }
+
+  function switchSource(src, btn) {
+    currentSource = src;
+    document.getElementById('tab-local').classList.toggle('active', src==='local');
+    document.getElementById('tab-global').classList.toggle('active', src==='global');
+    document.getElementById('local-section').style.display  = src==='local'  ? '' : 'none';
+    document.getElementById('global-section').style.display = src==='global' ? '' : 'none';
+    if (src === 'global') loadGlobal();
+  }
+
+  async function loadGlobal() {
+    const loading = document.getElementById('global-loading');
+    const table   = document.getElementById('global-table');
+    const error   = document.getElementById('global-error');
+    loading.style.display = 'block'; table.style.display = 'none'; error.style.display = 'none';
+    try {
+      const r = await fetch('/api/leaderboard');
+      if (!r.ok) throw new Error('Server error');
+      const data = await r.json();
+      if (!data.length) { loading.textContent = 'Henüz kayıtlı oyuncu yok.'; return; }
+      loading.style.display = 'none'; table.style.display = 'block';
+      const ranks = ['🥇','🥈','🥉'];
+      document.getElementById('global-body').innerHTML = data.map((u, i) => `
+        <tr class="${i<3?'rank-'+(i+1):''}">
+          <td><span class="rank-badge">${ranks[i]||i+1}</span></td>
+          <td><div style="display:flex;align-items:center;gap:8px">
+            <div style="width:12px;height:12px;border-radius:50%;background:${u.color||'#00d4ff'}"></div>
+            <span style="color:${u.color||'#00d4ff'};font-weight:700">${u.username}</span>
+          </div></td>
+          <td class="score-val">${u.totalKills||0}</td>
+          <td style="color:var(--c-dim)">${u.totalGames||0}</td>
+          <td style="color:var(--c-gold)">${u.bestClassic||0}%</td>
+        </tr>`).join('');
+    } catch {
+      loading.style.display = 'none'; error.style.display = 'block';
+    }
   }
 
   function clearMode(mode) {
@@ -149,14 +185,8 @@
     showToast('Tüm veriler silindi');
   }
 
-  function showToast(msg) {
-    const t = document.getElementById('toast');
-    t.textContent = msg;
-    t.classList.add('show');
-    setTimeout(() => t.classList.remove('show'), 2500);
-  }
+  function showToast(msg) { const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2500); }
 
-  // Init
   loadStats();
   renderTable('classic');
 </script>
