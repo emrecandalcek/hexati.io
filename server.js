@@ -32,7 +32,27 @@ app.use(Auth.middleware);
 
 // ── Static routes ─────────────────────────────────────────────
 app.use('/shared', express.static(path.join(__dirname, 'shared')));
-app.use(express.static(path.join(__dirname, 'public')));
+
+// Temiz URL'ler — .html olmadan çalışır
+// /multiplayer → /multiplayer.html, /admin → /admin.html
+const PAGES = [
+  'index','game','arcade','survival','sandbox',
+  'multiplayer','leaderboard','settings','howtoplay',
+  'login','profile','admin',
+];
+const PUBLIC = path.join(__dirname, 'public');
+
+PAGES.forEach(page => {
+  // /multiplayer  ve  /multiplayer/  ikisi de çalışsın
+  app.get(`/${page}`,     (_req, res) => res.sendFile(path.join(PUBLIC, `${page}.html`)));
+  app.get(`/${page}/`,    (_req, res) => res.sendFile(path.join(PUBLIC, `${page}.html`)));
+});
+
+// Kök / → index
+app.get('/', (_req, res) => res.sendFile(path.join(PUBLIC, 'index.html')));
+
+// Statik dosyalar (.js, .css, vs.) normal şekilde sunulsun
+app.use(express.static(PUBLIC));
 
 // ── Validation & security ─────────────────────────────────────
 const VALID_DIRS  = new Set(['1,0', '-1,0', '0,1', '0,-1']);
@@ -596,5 +616,5 @@ initRooms();
 server.listen(PORT, () => {
   console.log(`\n🎮 HEXATİ Multiplayer  v${CONFIG.VERSION}`);
   console.log(`   http://localhost:${PORT}`);
-  console.log(`   Admin: http://localhost:${PORT}/admin.html\n`);
+  console.log(`   Admin: http://localhost:${PORT}/admin\n`);
 });
