@@ -61,6 +61,19 @@ const Utils = {
     return `rgb(${r},${g},${b})`;
   },
 
+  // Hex çizim yolu — renderer.js tarafından kullanılır
+  // Multiplayer shared/utils.js'e eksikti → entity gövdesi görünmüyordu
+  hexPath(ctx, cx, cy, size) {
+    ctx.beginPath();
+    for (let i = 0; i < 6; i++) {
+      const angle = Math.PI / 3 * i - Math.PI / 6;
+      const px = cx + size * Math.cos(angle);
+      const py = cy + size * Math.sin(angle);
+      i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+  },
+
   DIRS: [
     { x: 1, y: 0 }, { x: -1, y: 0 },
     { x: 0, y: 1 }, { x: 0, y: -1 },
