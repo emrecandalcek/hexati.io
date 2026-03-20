@@ -1,18 +1,18 @@
 // ============================================================
-// main.js — Bootstrap
+// main.js — HEXATİ Bootstrap
 // ============================================================
 window.addEventListener('load', () => {
   try {
     window.game = new Game();
-    console.log('%cHexDomain loaded ✔', 'color:#00d4ff;font-weight:bold;font-size:14px');
-    console.log('Canvas size:', window.game.canvas.width, 'x', window.game.canvas.height);
+    console.log('%cHEXATİ yüklendi ✔', 'color:#00d4ff;font-weight:bold;font-size:14px');
+    console.log('Canvas boyutu:', window.game.canvas.width, 'x', window.game.canvas.height);
     console.log('CONFIG:', CONFIG.GRID_W, 'x', CONFIG.GRID_H, 'HEX_SIZE:', CONFIG.HEX_SIZE);
   } catch(e) {
-    console.error('HexDomain INIT ERROR:', e);
+    console.error('HEXATİ INIT HATASI:', e);
   }
 });
 
-// Save cumulative stats when leaving classic mode
+// Klasik moddan çıkışta birikimli istatistikleri kaydet
 window.addEventListener('beforeunload', () => {
   if (window.game?.player && typeof Storage !== 'undefined') {
     const p = window.game.player;

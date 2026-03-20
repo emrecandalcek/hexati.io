@@ -348,12 +348,28 @@ class Renderer {
       }
     }
     const mc = this.mctx;
-    mc.drawImage(this._miniOff,0,0);
+    mc.drawImage(this._miniOff, 0, 0);
+
+    // Radar upgrade: bot izlerini minimap'te göster
+    const localPlayer = entities.find(e => e.id === this.localPlayerId);
+    const hasRadar = localPlayer?.upgrades?.radar;
+    if (hasRadar) {
+      for (let i = 0; i < grid._data.length; i++) {
+        const c = grid._data[i];
+        if (!c.trail) continue;
+        const trailEntity = entities.find(e => e.id === c.trail);
+        if (!trailEntity || !trailEntity.isBot) continue;
+        const col = i % grid.w, row = (i / grid.w) | 0;
+        mc.fillStyle = Utils.hexAlpha(trailEntity.color, 0.7);
+        mc.fillRect(col * cw, row * ch, cw + 0.5, ch + 0.5);
+      }
+    }
+
     for (const e of entities) {
       if (!e.alive) continue;
       const isLocal = e.id === this.localPlayerId;
       mc.beginPath();
-      mc.arc(e.x*cw, e.y*ch, isLocal?3:2, 0, Math.PI*2);
+      mc.arc(e.x * cw, e.y * ch, isLocal ? 3 : 2, 0, Math.PI * 2);
       mc.fillStyle = isLocal ? '#fff' : e.color;
       mc.fill();
     }

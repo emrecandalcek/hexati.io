@@ -163,7 +163,9 @@ class ServerBot extends ServerEntity {
     this.alive = false;
     grid.clearTrail(this.id); grid.wipeEntity(this.id);
     this.trail=[]; this.outside=false; this.territory=0;
-    if (this.respawnCb) setTimeout(()=>this.respawnCb(this), CONFIG.BOT_RESPAWN_DELAY);
+    // BUG FIX: Direkt çağır — _respawnBot zaten kendi delay'ini içeriyor.
+    // Eski kodda burada da setTimeout vardı; bot 2x gecikmeyle spawn oluyordu.
+    if (this.respawnCb) this.respawnCb(this);
     events.push({ type:'death', id:this.id, cause });
   }
 }

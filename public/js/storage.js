@@ -1,8 +1,8 @@
 // ============================================================
-// storage.js — Persistent localStorage manager
+// storage.js — HEXATİ kalıcı localStorage yöneticisi
 // ============================================================
 const Storage = {
-  _k: key => `hexdomain_${key}`,
+  _k: key => `hexati_${key}`,
 
   save(key, value) {
     try { localStorage.setItem(this._k(key), JSON.stringify(value)); } catch(e) {}
@@ -19,7 +19,7 @@ const Storage = {
     try { localStorage.removeItem(this._k(key)); } catch(e) {}
   },
 
-  // ── Score management ─────────────────────────────────────
+  // ── Skor yönetimi ─────────────────────────────────────────
   addScore(mode, entry) {
     const scores = this.getScores(mode);
     scores.push({ ...entry, date: Date.now() });
@@ -32,15 +32,13 @@ const Storage = {
     return this.load(`scores_${mode}`, []);
   },
 
-  clearScores(mode) {
-    this.del(`scores_${mode}`);
-  },
+  clearScores(mode) { this.del(`scores_${mode}`); },
 
   clearAllScores() {
-    ['classic','arcade','survival'].forEach(m => this.clearScores(m));
+    ['classic', 'arcade', 'survival'].forEach(m => this.clearScores(m));
   },
 
-  // ── Stats (cumulative) ────────────────────────────────────
+  // ── Birikimli istatistikler ───────────────────────────────
   addStats(delta) {
     const s = this.getStats();
     s.gamesPlayed  = (s.gamesPlayed  || 0) + (delta.gamesPlayed  || 0);
@@ -58,19 +56,28 @@ const Storage = {
     });
   },
 
-  // ── Settings ─────────────────────────────────────────────
+  // ── Ayarlar ───────────────────────────────────────────────
   getSettings() {
     return this.load('settings', {
-      volume:     0.7,
+      volume:     70,
+      soundEnabled: true,
       difficulty: 'normal',
       fpsLimit:   0,
-      playerName: 'YOU',
+      playerName: '',
       showFPS:    true,
       particles:  true,
     });
   },
 
-  saveSettings(settings) {
-    this.save('settings', settings);
+  saveSettings(settings) { this.save('settings', settings); },
+
+  getPlayerName() {
+    return this.getSettings().playerName || '';
+  },
+
+  savePlayerName(name) {
+    const s = this.getSettings();
+    s.playerName = name;
+    this.saveSettings(s);
   },
 };

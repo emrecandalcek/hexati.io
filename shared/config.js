@@ -2,7 +2,7 @@
 // shared/config.js — Shared constants (server + client)
 // ============================================================
 const CONFIG = {
-  VERSION: '2.1',
+  VERSION: '2.2',
 
   GRID_W: 80, GRID_H: 80, HEX_SIZE: 20,
   get HEX_W() { return Math.sqrt(3) * this.HEX_SIZE; },

@@ -1,5 +1,5 @@
 // ============================================================
-// shop.js — In-game shop logic
+// shop.js — HEXATİ oyun içi shop
 // ============================================================
 class Shop {
   constructor(player, audio, ui) {
@@ -8,37 +8,41 @@ class Shop {
     this.ui     = ui;
     this._open  = false;
     this._el    = document.getElementById('shop-overlay');
+    if (!this._el) return;
     this._buildUI();
     document.getElementById('btn-shop-close').onclick = () => this.close();
     document.addEventListener('keydown', e => {
-      if (e.key === 'b' || e.key === 'B') this._open ? this.close() : this.open();
+      if (e.key === 'b' || e.key === 'B') { this._open ? this.close() : this.open(); }
       if (e.key === 'Escape' && this._open) this.close();
     });
   }
 
   open() {
+    if (!this._el) return;
     this._open = true;
     this._refresh();
     this._el.classList.add('active');
-    this.audio.click();
+    this.audio?.click();
   }
 
   close() {
+    if (!this._el) return;
     this._open = false;
     this._el.classList.remove('active');
-    this.audio.click();
+    this.audio?.click();
   }
 
   isOpen() { return this._open; }
 
   _buildUI() {
     const grid = document.getElementById('shop-items');
+    if (!grid) return;
     grid.innerHTML = '';
     for (const [key, item] of Object.entries(CONFIG.SHOP)) {
       const card = document.createElement('div');
-      card.className = 'shop-card';
+      card.className   = 'shop-card';
       card.dataset.key = key;
-      card.innerHTML = `
+      card.innerHTML   = `
         <div class="shop-icon">${item.icon}</div>
         <div class="shop-label">${item.label}</div>
         <div class="shop-desc">${item.desc}</div>
@@ -46,7 +50,7 @@ class Shop {
           <span class="shop-cost">⬡ ${item.cost}</span>
           <span class="shop-level"></span>
         </div>
-        <button class="shop-buy-btn">BUY</button>
+        <button class="shop-buy-btn">SATIN AL</button>
       `;
       card.querySelector('.shop-buy-btn').onclick = () => this._buy(key);
       grid.appendChild(card);
@@ -54,17 +58,19 @@ class Shop {
   }
 
   _refresh() {
-    document.getElementById('shop-coins-display').textContent = `⬡ ${this.player.coins}`;
+    const display = document.getElementById('shop-coins-display');
+    if (display) display.textContent = `⬡ ${this.player.coins}`;
+
     for (const [key, item] of Object.entries(CONFIG.SHOP)) {
       const card = document.querySelector(`.shop-card[data-key="${key}"]`);
       if (!card) continue;
       const level  = this.player.upgrades[key] || 0;
       const maxed  = level >= item.max;
       const afford = this.player.coins >= item.cost;
+      const btn    = card.querySelector('.shop-buy-btn');
       card.querySelector('.shop-level').textContent = maxed ? 'MAXED' : `${level}/${item.max}`;
-      const btn = card.querySelector('.shop-buy-btn');
-      btn.disabled = maxed || !afford;
-      btn.textContent = maxed ? 'MAXED' : (afford ? 'BUY' : 'NO COINS');
+      btn.disabled    = maxed || !afford;
+      btn.textContent = maxed ? 'MAXED' : (afford ? 'SATIN AL' : 'YETERSİZ COIN');
       card.classList.toggle('maxed',  maxed);
       card.classList.toggle('afford', !maxed && afford);
       card.classList.toggle('poor',   !maxed && !afford);
@@ -72,22 +78,20 @@ class Shop {
   }
 
   _buy(key) {
-    const item = CONFIG.SHOP[key];
+    const item  = CONFIG.SHOP[key];
     if (!item) return;
     const level = this.player.upgrades[key] || 0;
-    if (level >= item.max) return;
-    if (this.player.coins < item.cost) return;
+    if (level >= item.max || this.player.coins < item.cost) return;
 
     this.player.coins -= item.cost;
     this.player.upgrades[key] = level + 1;
 
-    // Apply immediate effects
     if (key === 'trail_speed') {
       this.player.moveInterval = this.player._baseMoveInterval();
     }
 
-    this.audio.powerup();
-    this.ui.notify(`${item.icon} ${item.label} upgraded!`, '#2ed573');
+    this.audio?.powerup();
+    this.ui.notify(`${item.icon} ${item.label} yükseltildi!`, '#2ed573');
     this._refresh();
   }
 }

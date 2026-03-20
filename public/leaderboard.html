@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>HexDomain — Leaderboard</title>
+  <title>HEXATİ — Leaderboard</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@300;400;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/pages.css">
@@ -73,7 +73,7 @@
   const MODES = { classic: '⬡', arcade: '⏱', survival: '💀' };
 
   function loadKey(k, def) {
-    try { const v = localStorage.getItem('hexdomain_' + k); return v ? JSON.parse(v) : def; } catch(e) { return def; }
+    try { const v = localStorage.getItem('hexati_' + k); return v ? JSON.parse(v) : def; } catch(e) { return def; }
   }
 
   function loadStats() {
@@ -136,14 +136,14 @@
 
   function clearMode(mode) {
     if (!confirm(`${mode.toUpperCase()} skorları silinsin mi?`)) return;
-    localStorage.removeItem('hexdomain_scores_' + mode);
+    localStorage.removeItem('hexati_scores_' + mode);
     renderTable(mode);
     showToast(mode + ' skorları silindi');
   }
 
   function clearAll() {
     if (!confirm('TÜM skorlar ve istatistikler silinsin mi?')) return;
-    ['classic','arcade','survival','stats'].forEach(k => localStorage.removeItem('hexdomain_' + k));
+    ['classic','arcade','survival','stats'].forEach(k => localStorage.removeItem('hexati_' + k));
     loadStats();
     ['classic','arcade','survival'].forEach(renderTable);
     showToast('Tüm veriler silindi');

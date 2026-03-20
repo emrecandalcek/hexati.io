@@ -1,5 +1,5 @@
 // ============================================================
-// server.js  —  Hexati Multiplayer Server  v2.1
+// server.js  —  HEXATİ Multiplayer Server  v2.2
 // Difficulty-based persistent rooms  |  Railway ready
 // ============================================================
 'use strict';
@@ -25,9 +25,20 @@ const io     = new Server(server, {
 app.use('/shared', express.static(path.join(__dirname, 'shared')));
 app.use(express.static(path.join(__dirname, 'public')));
 
+// ── Geçerli yönler (input validation) ────────────────────────
+const VALID_DIRS = new Set(['1,0', '-1,0', '0,1', '0,-1']);
+
+// ── XSS koruması ─────────────────────────────────────────────
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g,  '&amp;')
+    .replace(/</g,  '&lt;')
+    .replace(/>/g,  '&gt;')
+    .replace(/"/g,  '&quot;')
+    .replace(/'/g,  '&#x27;');
+}
+
 // ── Room registry ─────────────────────────────────────────────
-// Structure:  rooms  Map<roomId, GameRoom>
-// roomId format:  "<diff>_<n>"   e.g.  "easy_1", "normal_3"
 const rooms = new Map();
 
 function initRooms() {
@@ -39,16 +50,14 @@ function initRooms() {
       rooms.set(id, room);
     }
   }
-  console.log(`[Server] ${rooms.size} rooms initialised`);
+  console.log(`[Server] ${rooms.size} oda başlatıldı`);
   rooms.forEach((r, id) => console.log(`  ${id}  diff=${r.diff}  bots=${r.preset.botCount}`));
 }
 
-// Auto-assign: pick the room for a difficulty with most players but still has space
 function pickRoom(diff) {
   const candidates = [...rooms.values()]
     .filter(r => r.diff === diff && r.players.size < r.preset.maxPlayers);
   if (!candidates.length) return null;
-  // Prefer room with most players (social), fallback to first
   return candidates.sort((a, b) => b.players.size - a.players.size)[0];
 }
 
@@ -59,65 +68,50 @@ app.get('/api/rooms', (_req, res) => {
 });
 
 app.get('/api/health', (_req, res) => {
-  res.json({ ok: true, rooms: rooms.size, uptime: process.uptime() });
+  res.json({ ok: true, rooms: rooms.size, uptime: process.uptime(), version: CONFIG.VERSION });
 });
 
 // ── Socket.io ─────────────────────────────────────────────────
 io.on('connection', socket => {
-  console.log(`[Socket] connect  ${socket.id}`);
+  console.log(`[Socket] bağlandı  ${socket.id}`);
 
-  let currentRoom = null;  // GameRoom the socket is currently in
+  let currentRoom = null;
+  let inputCount  = 0;
+  let inputWindow = Date.now();
 
-  // ── Join a room ──────────────────────────────────────────
-  // Client sends: { diff, roomId?, name, color }
-  //   diff   = 'easy' | 'normal' | 'hard'   (required)
-  //   roomId = specific room id              (optional — auto-assign if omitted)
-  socket.on('room:join', ({ diff, roomId, name, color }) => {
-    // Leave previous room cleanly
-    if (currentRoom) {
-      currentRoom.removePlayer(socket.id);
-      currentRoom = null;
-    }
+  socket.on('room:join', (payload) => {
+    if (!payload || typeof payload !== 'object') return;
+    const { diff, roomId, name, color } = payload;
 
-    // Validate difficulty
+    if (currentRoom) { currentRoom.removePlayer(socket.id); currentRoom = null; }
+
     if (!CONFIG.DIFFICULTIES[diff]) {
-      socket.emit('room:error', { msg: `Geçersiz zorluk: ${diff}` });
-      return;
+      socket.emit('room:error', { msg: `Geçersiz zorluk: ${diff}` }); return;
     }
 
-    // Pick a room
+    const safeName  = escapeHtml((name || 'OYUNCU').toUpperCase().slice(0, 16));
+    const safeColor = CONFIG.PLAYER_COLORS.includes(color) ? color : CONFIG.PLAYER_COLORS[0];
+
     let room;
     if (roomId && rooms.has(roomId) && rooms.get(roomId).diff === diff) {
       room = rooms.get(roomId);
       if (room.players.size >= room.preset.maxPlayers) {
-        socket.emit('room:error', { msg: 'Bu oda dolu.' });
-        return;
+        socket.emit('room:error', { msg: 'Bu oda dolu.' }); return;
       }
     } else {
       room = pickRoom(diff);
       if (!room) {
-        socket.emit('room:error', { msg: 'Tüm odalar dolu. Daha sonra tekrar dene.' });
-        return;
+        socket.emit('room:error', { msg: 'Tüm odalar dolu. Kısa süre içinde tekrar dene.' }); return;
       }
     }
 
-    const player = room.addPlayer(socket.id, (name || 'PLAYER').toUpperCase().slice(0, 16), color);
-    if (!player) {
-      socket.emit('room:error', { msg: 'Odaya katılamadı.' });
-      return;
-    }
+    const player = room.addPlayer(socket.id, safeName, safeColor);
+    if (!player) { socket.emit('room:error', { msg: 'Odaya katılamadı.' }); return; }
 
     currentRoom = room;
 
-    // Send game:init directly — contains all info client needs
-    // room:joined sent first as lightweight confirmation, game:init follows immediately
-    socket.emit('room:joined', {
-      roomId:  room.roomId,
-      diff:    room.diff,
-      players: room.players.size,
-    });
+    socket.emit('room:joined', { roomId: room.roomId, diff: room.diff, players: room.players.size });
 
-    // game:init carries full state — send after a tick so room:joined arrives first
     setImmediate(() => {
       const p = room.players.get(socket.id);
       if (!p) return;
@@ -131,63 +125,64 @@ io.on('connection', socket => {
         gridH:    CONFIG.GRID_H,
         entities: room.entities.map(e => e.toState()),
       });
-      console.log(`[Socket] game:init sent to ${socket.id} myId=${p._pid || p.id}`);
     });
 
-    console.log(`[Socket] ${socket.id} joined room ${room.roomId}  players=${room.players.size}`);
+    console.log(`[Socket] ${socket.id} → oda ${room.roomId}  oyuncular=${room.players.size}`);
   });
 
-  // ── Leave room (explicit) ────────────────────────────────
   socket.on('room:leave', () => {
-    if (currentRoom) {
-      currentRoom.removePlayer(socket.id);
-      currentRoom = null;
-    }
+    if (currentRoom) { currentRoom.removePlayer(socket.id); currentRoom = null; }
   });
 
-  // ── Game input ───────────────────────────────────────────
+  // Rate-limit + validation
   socket.on('input:dir', dir => {
-    if (currentRoom) currentRoom.handleInput(socket.id, dir);
+    if (!currentRoom || !dir || typeof dir !== 'object') return;
+    if (typeof dir.x !== 'number' || typeof dir.y !== 'number') return;
+    if (!VALID_DIRS.has(`${dir.x},${dir.y}`)) return;
+
+    const now = Date.now();
+    if (now - inputWindow > 200) { inputCount = 0; inputWindow = now; }
+    if (++inputCount > 10) return;
+
+    currentRoom.handleInput(socket.id, { x: dir.x, y: dir.y });
   });
 
-  socket.on('shop:buy', ({ key }) => {
-    if (currentRoom) currentRoom.handleShopBuy(socket.id, key);
+  socket.on('shop:buy', (payload) => {
+    if (!currentRoom || !payload || typeof payload !== 'object') return;
+    const key = typeof payload.key === 'string' ? payload.key : null;
+    if (!key || !CONFIG.SHOP[key]) return;
+    currentRoom.handleShopBuy(socket.id, key);
   });
 
   socket.on('player:respawn', () => {
     if (currentRoom) currentRoom.handleRespawn(socket.id);
   });
 
-  // ── Chat ─────────────────────────────────────────────────
-  socket.on('chat:msg', ({ text }) => {
-    if (!currentRoom || !text) return;
+  // Tam XSS koruması
+  socket.on('chat:msg', (payload) => {
+    if (!currentRoom || !payload || typeof payload !== 'object') return;
     const player = currentRoom.players.get(socket.id);
     if (!player) return;
-    const safe = String(text).slice(0, 80).replace(/</g, '&lt;');
+    const raw = typeof payload.text === 'string' ? payload.text : '';
+    if (!raw.trim()) return;
+    const safe = escapeHtml(raw.slice(0, 80));
     io.to(currentRoom.roomId).emit('chat:msg', {
-      name:  player.name,
-      color: player.color,
-      text:  safe,
+      name: player.name, color: player.color, text: safe,
     });
   });
 
-  // ── Ping/pong (latency) ──────────────────────────────────
   socket.on('ping_check', () => socket.emit('pong_check'));
 
-  // ── Disconnect ───────────────────────────────────────────
   socket.on('disconnect', reason => {
-    console.log(`[Socket] disconnect  ${socket.id}  reason=${reason}`);
-    if (currentRoom) {
-      currentRoom.removePlayer(socket.id);
-      currentRoom = null;
-    }
+    console.log(`[Socket] ayrıldı  ${socket.id}  neden=${reason}`);
+    if (currentRoom) { currentRoom.removePlayer(socket.id); currentRoom = null; }
   });
 });
 
-// ── Start ─────────────────────────────────────────────────────
+// ── Başlat ────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3000;
 initRooms();
 server.listen(PORT, () => {
-  console.log(`\n🎮 Hexati Multiplayer  v${CONFIG.VERSION}`);
+  console.log(`\n🎮 HEXATİ Multiplayer  v${CONFIG.VERSION}`);
   console.log(`   http://localhost:${PORT}\n`);
 });

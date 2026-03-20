@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>HexDomain — Territory Wars</title>
+  <title>HEXATİ — Territory Wars</title>
+  <meta name="description" content="HEXATİ — Gerçek zamanlı bölge savaşları. Çevrimiçi oyna!">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@300;400;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/hub.css">
@@ -16,59 +17,50 @@
     <!-- Hero -->
     <div class="hero">
       <div class="logo">
-        <span class="logo-hex">HEX</span><span class="logo-domain">DOMAIN</span>
+        <span class="logo-hex">HEX</span><span class="logo-domain">ATİ</span>
       </div>
       <p class="tagline">TERRITORY WARS</p>
     </div>
 
-    <!-- Mode cards -->
+    <!-- Mod kartları -->
     <div class="modes-grid">
       <a href="game.html" class="mode-card" data-mode="classic">
         <div class="mode-icon">⬡</div>
         <div class="mode-name">CLASSIC</div>
-        <div class="mode-desc">
-          Sonsuz arena. Bölge kazan, rakip izlerini kes, liderlik tablosunu domine et.
-          Shop'tan upgrade satın al.
-        </div>
+        <div class="mode-desc">Sonsuz arena. Bölge kazan, rakip izlerini kes, liderlik tablosunu domine et. Shop'tan upgrade satın al.</div>
         <div class="mode-badge">STANDART MOD</div>
       </a>
 
       <a href="arcade.html" class="mode-card" data-mode="arcade">
         <div class="mode-icon">⏱</div>
         <div class="mode-name">ARCADE</div>
-        <div class="mode-desc">
-          90 saniye içinde maksimum bölge kap. Hız her şey — shop yok, sadece saf strateji.
-        </div>
+        <div class="mode-desc">90 saniye içinde maksimum bölge kap. Hız her şey — shop yok, sadece saf strateji.</div>
         <div class="mode-badge">ZAMAN YARIŞI</div>
       </a>
 
       <a href="survival.html" class="mode-card" data-mode="survival">
         <div class="mode-icon">💀</div>
         <div class="mode-name">SURVIVAL</div>
-        <div class="mode-desc">
-          Her 30 saniyede yeni bir bot eklenip hızlanır. 3 canın var. Ne kadar dayanırsın?
-        </div>
+        <div class="mode-desc">Her 30 saniyede yeni bot eklenip hızlanır. 3 canın var. Ne kadar dayanırsın?</div>
         <div class="mode-badge">DALGALI ZOR</div>
       </a>
 
       <a href="multiplayer.html" class="mode-card" data-mode="multiplayer" style="--card-color:#a29bfe">
         <div class="mode-icon">🌐</div>
         <div class="mode-name">MULTIPLAYER</div>
-        <div class="mode-desc">Gerçek oyunculara karşı oyna. Oda sistemi, sohbet, live leaderboard.</div>
-        <div class="mode-badge">ÇEVRIMIÇI</div>
+        <div class="mode-desc">Gerçek oyunculara karşı oyna. Oda sistemi, sohbet, canlı leaderboard.</div>
+        <div class="mode-badge">ÇEVRİMİÇİ</div>
       </a>
 
       <a href="sandbox.html" class="mode-card" data-mode="sandbox">
         <div class="mode-icon">🔧</div>
         <div class="mode-name">SANDBOX</div>
-        <div class="mode-desc">
-          Grid boyutunu, bot sayısını, hızı, güçlendiricileri tamamen özelleştir.
-        </div>
+        <div class="mode-desc">Grid boyutu, bot sayısı, hız, güçlendiricileri tamamen özelleştir.</div>
         <div class="mode-badge">ÖZEL AYARLAR</div>
       </a>
     </div>
 
-    <!-- Best scores -->
+    <!-- En iyi skorlar -->
     <div class="best-section">
       <div class="section-title">◈ KİŞİSEL REKORLAR</div>
       <div class="best-grid">
@@ -80,7 +72,7 @@
         <div class="best-card">
           <div class="best-mode">ARCADE</div>
           <div class="best-score" id="best-arcade">—</div>
-          <div class="best-sub">%90sn skor</div>
+          <div class="best-sub">90sn skoru</div>
         </div>
         <div class="best-card">
           <div class="best-mode">SURVIVAL</div>
@@ -90,7 +82,7 @@
       </div>
     </div>
 
-    <!-- Stats row -->
+    <!-- İstatistikler -->
     <div class="stats-row" id="stats-row">
       <div class="stat-item">
         <div class="stat-val" id="s-games">0</div>
@@ -110,7 +102,7 @@
       </div>
     </div>
 
-    <!-- Footer -->
+    <!-- Alt bağlantılar -->
     <div class="footer-links">
       <a href="leaderboard.html">◈ LIDERBOARD</a>
       <a href="settings.html">⚙ AYARLAR</a>
@@ -120,7 +112,7 @@
   </div>
 
   <script>
-    // ── Animated hex background ────────────────────────────
+    // ── Animasyonlu hex arka plan ──────────────────────────
     const canvas = document.getElementById('bg-canvas');
     const ctx = canvas.getContext('2d');
     let W, H, hexes = [];
@@ -133,7 +125,9 @@
 
     function buildHexes() {
       hexes = [];
-      const S = 32, cols = Math.ceil(W / (S * 1.73)) + 2, rows = Math.ceil(H / (S * 1.5)) + 2;
+      const S = 32;
+      const cols = Math.ceil(W / (S * 1.73)) + 2;
+      const rows = Math.ceil(H / (S * 1.5))  + 2;
       for (let col = -1; col < cols; col++) {
         for (let row = -1; row < rows; row++) {
           const x = col * S * Math.sqrt(3) + (row & 1 ? S * Math.sqrt(3) * 0.5 : 0);
@@ -147,15 +141,14 @@
       ctx.beginPath();
       for (let i = 0; i < 6; i++) {
         const a = Math.PI / 3 * i - Math.PI / 6;
-        i === 0 ? ctx.moveTo(x + size * Math.cos(a), y + size * Math.sin(a))
-                : ctx.lineTo(x + size * Math.cos(a), y + size * Math.sin(a));
+        i === 0
+          ? ctx.moveTo(x + size * Math.cos(a), y + size * Math.sin(a))
+          : ctx.lineTo(x + size * Math.cos(a), y + size * Math.sin(a));
       }
       ctx.closePath();
     }
 
-    let t = 0;
     function loop() {
-      t += 0.008;
       ctx.clearRect(0, 0, W, H);
       for (const h of hexes) {
         h.phase += h.speed;
@@ -172,10 +165,10 @@
     resize();
     loop();
 
-    // ── Load stats from localStorage ──────────────────────
+    // ── localStorage'dan istatistikleri yükle ─────────────
     function loadStats() {
       try {
-        const stats = JSON.parse(localStorage.getItem('hexdomain_stats') || '{}');
+        const stats = JSON.parse(localStorage.getItem('hexati_stats') || '{}');
         document.getElementById('s-games').textContent = stats.gamesPlayed || 0;
         document.getElementById('s-kills').textContent = stats.totalKills  || 0;
         const t = stats.timePlayed || 0;
@@ -183,13 +176,13 @@
         document.getElementById('s-time').textContent = `${m}:${String(s).padStart(2,'0')}`;
         document.getElementById('s-territory').textContent = stats.totalCapture || 0;
 
-        const classicBest = JSON.parse(localStorage.getItem('hexdomain_scores_classic') || '[]');
-        const arcadeBest  = JSON.parse(localStorage.getItem('hexdomain_scores_arcade')  || '[]');
-        const survBest    = JSON.parse(localStorage.getItem('hexdomain_scores_survival')|| '[]');
+        const classicBest = JSON.parse(localStorage.getItem('hexati_scores_classic')  || '[]');
+        const arcadeBest  = JSON.parse(localStorage.getItem('hexati_scores_arcade')   || '[]');
+        const survBest    = JSON.parse(localStorage.getItem('hexati_scores_survival') || '[]');
 
-        document.getElementById('best-classic').textContent  = classicBest[0] ? classicBest[0].score + '%' : '—';
-        document.getElementById('best-arcade').textContent   = arcadeBest[0]  ? arcadeBest[0].score  + '%' : '—';
-        document.getElementById('best-survival').textContent = survBest[0]    ? survBest[0].score    + 's' : '—';
+        document.getElementById('best-classic').textContent  = classicBest[0] ? classicBest[0].score + '%'  : '—';
+        document.getElementById('best-arcade').textContent   = arcadeBest[0]  ? arcadeBest[0].score  + '%'  : '—';
+        document.getElementById('best-survival').textContent = survBest[0]    ? survBest[0].score    + 's'  : '—';
       } catch(e) {}
     }
     loadStats();

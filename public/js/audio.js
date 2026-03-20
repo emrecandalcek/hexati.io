@@ -7,7 +7,7 @@ class AudioEngine {
     this.on     = true;
     this.volume = 0.7;
     try {
-      const s = JSON.parse(localStorage.getItem('hexdomain_settings') || '{}');
+      const s = JSON.parse(localStorage.getItem('hexati_settings') || '{}');
       if (s.soundEnabled === false) this.on = false;
       if (s.volume !== undefined) this.volume = s.volume / 100;
     } catch(e) {}

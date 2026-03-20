@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>HexDomain — Ayarlar</title>
+  <title>HEXATİ — Ayarlar</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@300;400;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/pages.css">
@@ -132,7 +132,7 @@
 
 <script>
   function loadKey(k, def) {
-    try { const v = localStorage.getItem('hexdomain_' + k); return v ? JSON.parse(v) : def; } catch(e) { return def; }
+    try { const v = localStorage.getItem('hexati_' + k); return v ? JSON.parse(v) : def; } catch(e) { return def; }
   }
 
   const defaults = { volume: 70, soundEnabled: true, difficulty: 'normal', fpsLimit: 0, particles: true, showFPS: true };
@@ -183,12 +183,12 @@
       particles:    document.getElementById('particles-enabled').checked,
       showFPS:      document.getElementById('show-fps').checked,
     };
-    localStorage.setItem('hexdomain_settings', JSON.stringify(s));
+    localStorage.setItem('hexati_settings', JSON.stringify(s));
     showToast('Ayarlar kaydedildi ✓');
   }
 
   function resetSettings() {
-    localStorage.removeItem('hexdomain_settings');
+    localStorage.removeItem('hexati_settings');
     loadSettings();
     showToast('Ayarlar sıfırlandı');
   }

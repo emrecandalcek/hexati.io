@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Hexati — Survival Mode</title>
+  <title>HEXATİ — Survival Mode</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@300;400;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
@@ -223,12 +223,11 @@
       window.location.href = 'leaderboard.html';
     };
 
-    // Override death button to use survival respawn
+    // Survival respawn — hideDeath mode-survival.js içinde yapılıyor
     window.addEventListener('load', () => {
       document.getElementById('btn-respawn').onclick = () => {
-        window.game.audio.resume();
-        window.game.ui.hideDeath();
-        window.game._respawnPlayer();
+        window.game?.audio?.resume();
+        window.game?._respawnPlayer();
       };
     });
   </script>

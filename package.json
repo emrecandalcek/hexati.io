@@ -1,7 +1,7 @@
 {
-  "name": "hexdomain",
-  "version": "2.0.0",
-  "description": "HexDomain — Multiplayer Territory Wars",
+  "name": "hexati",
+  "version": "2.2.0",
+  "description": "HEXATİ — Multiplayer Territory Wars",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
