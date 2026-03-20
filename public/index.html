@@ -107,6 +107,8 @@
       <a href="leaderboard.html">◈ LIDERBOARD</a>
       <a href="settings.html">⚙ AYARLAR</a>
       <a href="howtoplay.html">? NASIL OYNANIR</a>
+      <a href="profile.html" id="nav-profile">◉ PROFİL</a>
+      <a href="login.html" id="nav-login">→ GİRİŞ</a>
     </div>
 
   </div>
@@ -186,6 +188,10 @@
       } catch(e) {}
     }
     loadStats();
+    // Giriş durumuna göre link göster
+    const _u = localStorage.getItem('hexati_user');
+    if(_u){try{JSON.parse(_u);document.getElementById('nav-login').style.display='none'}catch{}}
+    else{document.getElementById('nav-profile').style.display='none'}
   </script>
 </body>
 </html>

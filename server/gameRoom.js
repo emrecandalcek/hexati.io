@@ -306,6 +306,26 @@ class GameRoom {
     return { x: Utils.randInt(4, CONFIG.GRID_W-4), y: Utils.randInt(4, CONFIG.GRID_H-4) };
   }
 
+  // Admin panel'den bot ekleme
+  _spawnExtraBot() {
+    const usedColors = new Set([
+      ...[...this.players.values()].map(p => p.color),
+      ...this.bots.map(b => b.color),
+    ]);
+    const color = CONFIG.PLAYER_COLORS.find(c => !usedColors.has(c))
+               ?? CONFIG.PLAYER_COLORS[this.bots.length % CONFIG.PLAYER_COLORS.length];
+    const name  = CONFIG.BOT_NAMES[this.bots.length % CONFIG.BOT_NAMES.length];
+    const botId = `bot_${this.roomId}_extra_${Date.now().toString(36)}`;
+    const { x, y } = this._findSpawnPos();
+    const bot = new ServerBot(botId, name, color, x, y, this.preset.botSpeedMult);
+    bot.dir       = Utils.pick(Utils.DIRS);
+    bot.respawnCb = b => this._respawnBot(b);
+    this.grid.claimStart(x, y, CONFIG.START_AREA_RADIUS, botId);
+    bot.territory = this.grid.countOwned(botId);
+    this.bots.push(bot);
+    this._rebuildEntities();
+  }
+
   _rebuildEntities() {
     this.entities = [...this.players.values(), ...this.bots];
   }

@@ -1,6 +1,6 @@
 {
   "name": "hexati",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "description": "HEXATİ — Multiplayer Territory Wars",
   "main": "server.js",
   "scripts": {
@@ -8,7 +8,10 @@
     "dev": "nodemon server.js"
   },
   "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cookie-parser": "^1.4.6",
     "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.2",
     "socket.io": "^4.7.2"
   },
   "devDependencies": {
