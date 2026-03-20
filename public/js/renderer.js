@@ -245,52 +245,73 @@ class Renderer {
   _drawEntities(entities, camera, ctx) {
     for (const e of entities) {
       if (!e.alive) continue;
-      // px/py undefined ise (multiplayer ilk frame) grid pozisyonunu kullan
+
+      // px/py undefined veya NaN ise grid koordinatından hesapla
       const px = (e.px !== undefined && !isNaN(e.px)) ? e.px : Utils.hexToPixel(e.x, e.y).x;
       const py = (e.py !== undefined && !isNaN(e.py)) ? e.py : Utils.hexToPixel(e.x, e.y).y;
       const sp = camera.toScreen(px, py);
-      const S  = CONFIG.HEX_SIZE;
+      const S       = CONFIG.HEX_SIZE;
       const isLocal = e.id === this.localPlayerId;
 
-      // Gövde
       ctx.save();
-      ctx.beginPath();
-      this._addHexToPath(new Path2D(), sp.x, sp.y, S * 0.7);
+
+      // Ghost efekti — önce globalAlpha ayarla
+      if (e.ghostMs > 0) {
+        ctx.globalAlpha = 0.45 + 0.45 * Math.sin(this.t * 10);
+      }
+
+      // ── Dış parlak çerçeve (ayırt edici — trail/territory ile karışmasın) ──
+      // Lokal oyuncu: beyaz, parlak. Bot/diğer: entity renginden açık ton.
+      Utils.hexPath(ctx, sp.x, sp.y, S * 0.92);
+      ctx.fillStyle = isLocal ? 'rgba(255,255,255,0.55)' : Utils.hexAlpha(e.color, 0.45);
+      ctx.fill();
+
+      // ── İç gövde hex ──────────────────────────────────────
       Utils.hexPath(ctx, sp.x, sp.y, S * 0.72);
       ctx.fillStyle = e.color;
       ctx.fill();
 
-      // Kalkan efekti
+      // ── Merkez nokta (yönelim göstergesi) ────────────────
+      // Yöne göre offset — nereye gideceği belli olsun
+      const dirX = (e.dir?.x || 0) * S * 0.22;
+      const dirY = (e.dir?.y || 0) * S * 0.22;
+      ctx.beginPath();
+      ctx.arc(sp.x + dirX, sp.y + dirY, isLocal ? S * 0.22 : S * 0.16, 0, Math.PI * 2);
+      ctx.fillStyle = isLocal ? '#fff' : 'rgba(255,255,255,0.8)';
+      ctx.fill();
+
+      // ── Kalkan halkası ────────────────────────────────────
       if (e.shielded) {
+        ctx.globalAlpha = 0.7 + 0.3 * Math.sin(this.t * 6);
         ctx.beginPath();
-        ctx.arc(sp.x, sp.y, S * 0.85, 0, Math.PI * 2);
+        ctx.arc(sp.x, sp.y, S * 0.95, 0, Math.PI * 2);
         ctx.strokeStyle = '#00d4ff';
         ctx.lineWidth   = 2.5;
-        ctx.globalAlpha = 0.7 + 0.3 * Math.sin(this.t * 6);
         ctx.stroke();
-        ctx.globalAlpha = 1;
+        ctx.globalAlpha = e.ghostMs > 0 ? (0.45 + 0.45 * Math.sin(this.t * 10)) : 1;
       }
 
-      // Ghost (invincibility) efekti
-      if (e.ghostMs > 0) {
-        ctx.globalAlpha = 0.4 + 0.4 * Math.sin(this.t * 10);
-      }
+      // ── İsim etiketi ──────────────────────────────────────
+      ctx.globalAlpha = 0.92;
+      ctx.fillStyle   = '#fff';
+      ctx.font        = isLocal
+        ? `bold ${S * 0.6}px "Orbitron", sans-serif`
+        : `${S * 0.48}px "Orbitron", sans-serif`;
+      ctx.textAlign    = 'center';
+      ctx.textBaseline = 'bottom';
+      // İsim gölgesi — arka plan ne olursa okunabilsin
+      ctx.shadowColor  = 'rgba(0,0,0,0.8)';
+      ctx.shadowBlur   = 4;
+      ctx.fillText(e.name.slice(0, 8), sp.x, sp.y - S * 0.85);
+      ctx.shadowBlur   = 0;
+      ctx.globalAlpha  = 1;
 
-      // İsim etiketi (lokal oyuncu için büyük, botlar için küçük)
-      ctx.fillStyle = '#fff';
-      ctx.font      = isLocal ? `bold ${S * 0.55}px "Orbitron", sans-serif`
-                               : `${S * 0.45}px "Orbitron", sans-serif`;
-      ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
-      ctx.globalAlpha = 0.9;
-      ctx.fillText(e.name.slice(0, 8), sp.x, sp.y - S * 0.8);
-      ctx.globalAlpha = 1;
-
-      // Hız boost oku
+      // ── Hız boost ─────────────────────────────────────────
       if (e.speedBoost) {
-        ctx.fillStyle   = '#ffd700';
-        ctx.font        = `${S * 0.5}px sans-serif`;
-        ctx.textBaseline= 'middle';
-        ctx.fillText('⚡', sp.x + S * 0.6, sp.y);
+        ctx.font         = `${S * 0.55}px sans-serif`;
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle    = '#ffd700';
+        ctx.fillText('⚡', sp.x + S * 0.7, sp.y - S * 0.1);
       }
 
       ctx.restore();
