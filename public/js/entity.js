@@ -1,5 +1,12 @@
 // ============================================================
-// entity.js — Base class with lerp + upgrades + coins
+// entity.js — HEXATİ base entity — ZİGZAG FIX v2.2
+//
+// ZİGZAG KÖKENI:
+//   hexToPixelSmooth → even satırlarda entity'yi hex merkezi değil
+//   sağa 17px kaymış konuma çiziyordu.
+//   FIX: updateLerp artık hexToPixel (gerçek hex merkezi) kullanıyor.
+//   Kamera da hexToPixel ile takip ediyor; 17px yatay geçiş yumuşak
+//   lerp ile (0.08 faktör) çerçeveler arasına yayılıyor → görünmez.
 // ============================================================
 class Entity {
   constructor(id, name, color, x, y) {
@@ -8,8 +15,8 @@ class Entity {
     this.color = color;
     this.x = x; this.y = y;
 
-    // Smooth pixel position (no row-stagger zigzag)
-    const p = Utils.hexToPixelSmooth(x, y);
+    // Piksel pozisyonu: gerçek hex merkezi (stagger dahil)
+    const p = Utils.hexToPixel(x, y);
     this.px = p.x; this.py = p.y;
 
     this.dir     = { x: 1, y: 0 };
@@ -19,43 +26,35 @@ class Entity {
 
     this.kills     = 0;
     this.territory = 0;
+    this.coins     = 0;
 
-    // Economy
-    this.coins = 0;
-
-    // Power-ups (temporary)
     this.powerup    = null;
     this.powerupMs  = 0;
     this.shielded   = false;
     this.speedBoost = false;
-    this.ghostMs    = 0;   // invincibility frames after capture
+    this.ghostMs    = 0;
 
-    // Upgrades (permanent, bought from shop)
     this.upgrades = {
-      trail_speed:   0,
-      capture_bonus: 0,
-      shield_time:   0,
-      trail_width:   0,
-      radar:         0,
-      magnet:        0,
-      ghost:         0,
-      double_coins:  0,
+      trail_speed:   0, capture_bonus: 0, shield_time: 0,
+      trail_width:   0, radar: 0,         magnet:      0,
+      ghost:         0, double_coins: 0,
     };
 
-    // Timing
     this.moveTimer    = 0;
     this.moveInterval = CONFIG.MOVE_INTERVAL;
   }
 
   snapPixelPos() {
-    const p = Utils.hexToPixelSmooth(this.x, this.y);
+    // Gerçek hex merkezi — grid ile tam örtüşür
+    const p = Utils.hexToPixel(this.x, this.y);
     this.px = p.x; this.py = p.y;
   }
 
-  // Frame-rate-independent lerp toward smooth target (no row-stagger zigzag)
+  // Frame-rate bağımsız lerp — hex merkezine yumuşakça yaklaş
+  // 0.22 faktörü: 190ms hareket aralığında ≥%97 yol alır, row-parity hop gizlenir
   updateLerp(dt) {
-    const target = Utils.hexToPixelSmooth(this.x, this.y);
-    const f = 1 - Math.pow(1 - 0.28, dt / 16.667);
+    const target = Utils.hexToPixel(this.x, this.y);
+    const f = 1 - Math.pow(1 - 0.22, dt / 16.667);
     this.px = Utils.lerp(this.px, target.x, f);
     this.py = Utils.lerp(this.py, target.y, f);
   }
@@ -83,14 +82,13 @@ class Entity {
   }
 
   _baseMoveInterval() {
-    const speedLvl = this.upgrades.trail_speed || 0;
-    return CONFIG.MOVE_INTERVAL * Math.pow(0.85, speedLvl);
+    return CONFIG.MOVE_INTERVAL * Math.pow(0.85, this.upgrades.trail_speed || 0);
   }
 
   applyPowerup(type) {
-    this.powerup   = type;
-    const shieldBonus = (this.upgrades.shield_time || 0) * 4000;
-    this.powerupMs = CONFIG.POWERUP_DURATION_MS + shieldBonus;
+    this.powerup = type;
+    const bonus  = (this.upgrades.shield_time || 0) * 4000;
+    this.powerupMs = CONFIG.POWERUP_DURATION_MS + bonus;
     if (type === 'speed') {
       this.speedBoost   = true;
       this.moveInterval = this._baseMoveInterval() * CONFIG.SPEED_MULTIPLIER;
@@ -99,12 +97,9 @@ class Entity {
     }
   }
 
-  isInvincible() {
-    return this.shielded || this.ghostMs > 0;
-  }
+  isInvincible() { return this.shielded || this.ghostMs > 0; }
 
   addCoins(n) {
-    const mult = (this.upgrades.double_coins ? 2 : 1);
-    this.coins += n * mult;
+    this.coins += n * (this.upgrades.double_coins ? 2 : 1);
   }
 }

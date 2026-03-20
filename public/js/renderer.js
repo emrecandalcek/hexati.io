@@ -1,6 +1,6 @@
 // ============================================================
-// renderer.js — Batch renderer + FPS counter + particles
-//               + coins + danger zones + smooth lerp
+// renderer.js — HEXATİ Batch Renderer v2.2
+// Grid + Entity + FPS + Minimap (Radar upgrade dahil)
 // ============================================================
 class Renderer {
   constructor(canvas, miniCanvas) {
@@ -12,8 +12,7 @@ class Renderer {
     this.particles    = new ParticleSystem();
     this.minimapDirty = true;
 
-    // Load settings
-    this.showFPS      = true;
+    this.showFPS       = true;
     this.showParticles = true;
     try {
       const s = JSON.parse(localStorage.getItem('hexati_settings') || '{}');
@@ -21,30 +20,27 @@ class Renderer {
       if (s.particles  !== undefined) this.showParticles = s.particles;
     } catch(e) {}
 
-    this._miniOff     = document.createElement('canvas');
-    this._miniOff.width  = CONFIG.MINIMAP_PX;
-    this._miniOff.height = CONFIG.MINIMAP_PX;
+    this._miniOff             = document.createElement('canvas');
+    this._miniOff.width       = CONFIG.MINIMAP_PX;
+    this._miniOff.height      = CONFIG.MINIMAP_PX;
+    this._colorMap            = {};
+    this._pendingPowerups     = null;
+    this._pendingCoins        = null;
+    this.localPlayerId        = 'player';
 
-    this._colorMap    = {};
-    this._pendingPowerups = null;
-    this.localPlayerId = 'player';
+    // FPS izleme
+    this._fpsSamples = [];
+    this._fpsDisplay = 0;
+    this._fpsTimer   = 0;
 
-    // FPS tracking
-    this._fpsSamples  = [];
-    this._fpsDisplay  = 0;
-    this._fpsTimer    = 0;
-
-    // Set canvas size once, then get contexts — no double resize
     this._setCanvasSize(window.innerWidth, window.innerHeight);
 
-    // Contexts acquired once on correct-sized canvas
     this.ctx         = canvas.getContext('2d');
     this.mctx        = miniCanvas.getContext('2d');
     this._miniOffCtx = this._miniOff.getContext('2d');
 
     window.addEventListener('resize', () => {
       this._setCanvasSize(window.innerWidth, window.innerHeight);
-      // Re-acquire context after resize (canvas reset clears it)
       this.ctx = this.canvas.getContext('2d');
       if (this._camera) {
         this._camera.vw = this.canvas.width;
@@ -59,24 +55,21 @@ class Renderer {
     this.canvas.height = h;
   }
 
-  // Call after creating renderer to sync camera viewport
   initCamera(camera) {
     this._camera = camera;
     camera.vw = this.canvas.width;
     camera.vh = this.canvas.height;
   }
 
-  // Legacy alias
   forceResize(camera) { this.initCamera(camera); }
-
-  markMinimapDirty() { this.minimapDirty = true; }
+  markMinimapDirty()  { this.minimapDirty = true; }
 
   spawnParticles(worldPos, color, count) {
     if (!this.showParticles) return;
     this.particles.emit(worldPos.x, worldPos.y, color, count);
   }
 
-  // ── Main draw ─────────────────────────────────────────────
+  // ── Ana çizim ─────────────────────────────────────────────
   draw(grid, entities, camera, dt) {
     this._camera = camera;
     this.t += 0.04;
@@ -85,7 +78,7 @@ class Renderer {
     const W = this.canvas.width, H = this.canvas.height;
     if (W === 0 || H === 0) return;
 
-    // FPS sampling
+    // FPS örnekleme
     this._fpsTimer += dt;
     this._fpsSamples.push(dt);
     if (this._fpsSamples.length > 60) this._fpsSamples.shift();
@@ -102,7 +95,6 @@ class Renderer {
     this._colorMap = {};
     for (const e of entities) this._colorMap[e.id] = e.color;
 
-    // Lerp all entities (only Entity class instances have updateLerp)
     for (const e of entities) if (e.alive && typeof e.updateLerp === 'function') e.updateLerp(dt);
 
     this._drawGrid(grid, camera, ctx);
@@ -115,23 +107,23 @@ class Renderer {
     if (this.showFPS) this._drawFPS(ctx);
   }
 
-  // ── Batch grid draw ───────────────────────────────────────
+  // ── Grid çizimi (batch) ───────────────────────────────────
   _drawGrid(grid, camera, ctx) {
     const S = CONFIG.HEX_SIZE, S1 = S - 1.2;
-    const HW = CONFIG.HEX_W;  // actual hex pixel width ~34px
+    const HW = CONFIG.HEX_W;
     const pulse = 0.5 + 0.5 * Math.sin(this.t * 3);
 
-    const ownedBuckets  = {};
-    const trailBuckets  = {};
-    const dangerPath    = new Path2D();
-    const emptyPath     = new Path2D();
-    let emptyCount = 0, dangerCount = 0;
+    const ownedBuckets = {};
+    const trailBuckets = {};
+    const dangerPath   = new Path2D();
+    const emptyPath    = new Path2D();
+    let dangerCount = 0;
 
     this._pendingPowerups = [];
     this._pendingCoins    = [];
 
-    for (let col=0; col<grid.w; col++) {
-      for (let row=0; row<grid.h; row++) {
+    for (let col = 0; col < grid.w; col++) {
+      for (let row = 0; row < grid.h; row++) {
         const wp = Utils.hexToPixel(col, row);
         if (!camera.isVisible(wp.x, wp.y, HW * 2)) continue;
         const sp   = camera.toScreen(wp.x, wp.y);
@@ -144,227 +136,223 @@ class Renderer {
           const c = this._colorMap[cell.trail];
           if (c) {
             if (!trailBuckets[c]) trailBuckets[c] = [];
-            trailBuckets[c].push({x:sp.x, y:sp.y});
+            trailBuckets[c].push({ x: sp.x, y: sp.y });
           }
         } else if (cell.owner) {
           const c = this._colorMap[cell.owner];
           if (c) {
-            if (!ownedBuckets[c]) ownedBuckets[c] = new Path2D();
-            this._addHexToPath(ownedBuckets[c], sp.x, sp.y, S1);
+            if (!ownedBuckets[c]) ownedBuckets[c] = [];
+            ownedBuckets[c].push({ x: sp.x, y: sp.y });
           }
         } else {
           this._addHexToPath(emptyPath, sp.x, sp.y, S1);
-          emptyCount++;
         }
 
-        if (cell.powerup) this._pendingPowerups.push({x:sp.x, y:sp.y, type:cell.powerup});
-        if (cell.coin)    this._pendingCoins.push({x:sp.x, y:sp.y, value:cell.coin});
+        if (cell.powerup) this._pendingPowerups.push({ sp, type: cell.powerup });
+        if (cell.coin)    this._pendingCoins.push({ sp, val: cell.coin });
       }
     }
 
-    // Empty
-    if (emptyCount>0) {
-      ctx.fillStyle='#101828'; ctx.strokeStyle='#0e1624'; ctx.lineWidth=0.5;
-      ctx.fill(emptyPath); ctx.stroke(emptyPath);
-    }
+    // Boş hexler
+    ctx.fillStyle = CONFIG.GRID_STROKE;
+    ctx.fill(emptyPath);
 
-    // Danger zones — pulsing red
-    if (dangerCount>0) {
-      const dAlpha = 0.35 + 0.35*Math.sin(this.t*4);
-      ctx.fillStyle = `rgba(255,50,50,${dAlpha})`;
-      ctx.strokeStyle = '#ff2222';
-      ctx.lineWidth = 1;
-      ctx.fill(dangerPath); ctx.stroke(dangerPath);
-    }
-
-    // Owned
-    for (const [color, path] of Object.entries(ownedBuckets)) {
-      ctx.fillStyle   = color;
-      ctx.strokeStyle = Utils.darken(color, 0.45);
-      ctx.lineWidth   = 1;
-      ctx.fill(path); ctx.stroke(path);
-    }
-
-    // Trail (pulsed alpha)
-    const savedAlpha = ctx.globalAlpha;
-    for (const [color, cells] of Object.entries(trailBuckets)) {
-      const tp = new Path2D();
-      for (const {x,y} of cells) this._addHexToPath(tp, x, y, S1);
-      ctx.globalAlpha = 0.45 + 0.55*pulse;
-      ctx.fillStyle   = color;
-      ctx.fill(tp);
-      ctx.globalAlpha = 1;
+    // Sahip olunan hexler
+    for (const [color, cells] of Object.entries(ownedBuckets)) {
+      const path = new Path2D();
+      for (const { x, y } of cells) this._addHexToPath(path, x, y, S1);
+      ctx.fillStyle = Utils.hexAlpha(color, 0.6);
+      ctx.fill(path);
       ctx.strokeStyle = color;
-      ctx.lineWidth   = 1.2;
-      ctx.stroke(tp);
+      ctx.lineWidth   = 0.5;
+      ctx.stroke(path);
     }
-    ctx.globalAlpha = savedAlpha;
 
-    // Power-up icons
-    for (const {x,y,type} of this._pendingPowerups) this._drawPowerupIcon(ctx,x,y,type);
-    // Coin icons
-    for (const {x,y,value} of this._pendingCoins)   this._drawCoin(ctx,x,y,value);
+    // Trail hexler
+    for (const [color, cells] of Object.entries(trailBuckets)) {
+      const path = new Path2D();
+      for (const { x, y } of cells) this._addHexToPath(path, x, y, S1 - 1);
+      ctx.fillStyle = color;
+      ctx.fill(path);
+    }
+
+    // Tehlike bölgeleri (pulsating kırmızı)
+    if (dangerCount > 0) {
+      ctx.fillStyle = `rgba(255,${20 + pulse * 30 | 0},${20 + pulse * 20 | 0},${0.6 + pulse * 0.2})`;
+      ctx.fill(dangerPath);
+    }
+
+    // Güçlendiriciler
+    for (const { sp, type } of this._pendingPowerups) {
+      this._drawPowerup(ctx, sp.x, sp.y, type, S);
+    }
+
+    // Coinler
+    for (const { sp, val } of this._pendingCoins) {
+      this._drawCoin(ctx, sp.x, sp.y, val, S);
+    }
   }
 
   _addHexToPath(path, cx, cy, size) {
-    for (let i=0; i<6; i++) {
-      const angle = Math.PI/3*i - Math.PI/6;
-      const px = cx + size*Math.cos(angle);
-      const py = cy + size*Math.sin(angle);
-      i===0 ? path.moveTo(px,py) : path.lineTo(px,py);
+    path.moveTo(cx + size * Math.cos(-Math.PI / 6), cy + size * Math.sin(-Math.PI / 6));
+    for (let i = 1; i < 6; i++) {
+      const a = Math.PI / 3 * i - Math.PI / 6;
+      path.lineTo(cx + size * Math.cos(a), cy + size * Math.sin(a));
     }
     path.closePath();
   }
 
-  // ── Entities ──────────────────────────────────────────────
+  _drawPowerup(ctx, cx, cy, type, S) {
+    const pulse = 0.5 + 0.5 * Math.sin(this.t * 4);
+    const r = S * 0.45 + pulse * 2;
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    const colors = { speed: '#ffd700', shield: '#00d4ff', double: '#2ed573' };
+    ctx.fillStyle = Utils.hexAlpha(colors[type] || '#fff', 0.3 + pulse * 0.2);
+    ctx.fill();
+    ctx.strokeStyle = colors[type] || '#fff';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.fillStyle = colors[type] || '#fff';
+    ctx.font = `${S * 0.55}px sans-serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(type === 'speed' ? '⚡' : type === 'shield' ? '🛡' : '✕2', cx, cy + 1);
+    ctx.restore();
+  }
+
+  _drawCoin(ctx, cx, cy, val, S) {
+    const pulse = 0.5 + 0.5 * Math.sin(this.t * 3 + cx);
+    const r = S * 0.3 + pulse * 1.5;
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fillStyle = Utils.hexAlpha('#ffd700', 0.7 + pulse * 0.2);
+    ctx.fill();
+    ctx.strokeStyle = '#ffaa00';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    if (val > 1) {
+      ctx.fillStyle = '#7a5200';
+      ctx.font = `bold ${S * 0.4}px sans-serif`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(val, cx, cy + 0.5);
+    }
+    ctx.restore();
+  }
+
+  // ── Entity çizimi ─────────────────────────────────────────
   _drawEntities(entities, camera, ctx) {
     for (const e of entities) {
       if (!e.alive) continue;
-      if (!camera.isVisible(e.px, e.py)) continue;
       const sp = camera.toScreen(e.px, e.py);
-      const isPlayer = e.id === this.localPlayerId;
-      const r = isPlayer ? 11 : 8;
+      const S  = CONFIG.HEX_SIZE;
+      const isLocal = e.id === this.localPlayerId;
 
-      // Ghost glow
-      if (e.ghostMs > 0) {
-        ctx.beginPath();
-        ctx.arc(sp.x, sp.y, r+9, 0, Math.PI*2);
-        ctx.strokeStyle = Utils.hexAlpha('#ffffff', 0.3*Math.sin(this.t*8));
-        ctx.lineWidth = 3;
-        ctx.stroke();
-      }
+      // Gövde
+      ctx.save();
+      ctx.beginPath();
+      this._addHexToPath(new Path2D(), sp.x, sp.y, S * 0.7);
+      Utils.hexPath(ctx, sp.x, sp.y, S * 0.72);
+      ctx.fillStyle = e.color;
+      ctx.fill();
 
-      // Shield halo
+      // Kalkan efekti
       if (e.shielded) {
-        const haloR = r + 7 + 3*Math.sin(this.t*4);
         ctx.beginPath();
-        ctx.arc(sp.x, sp.y, haloR, 0, Math.PI*2);
-        ctx.strokeStyle = Utils.hexAlpha('#00d4ff', 0.5+0.35*Math.sin(this.t*3));
-        ctx.lineWidth = 2.5; ctx.stroke();
+        ctx.arc(sp.x, sp.y, S * 0.85, 0, Math.PI * 2);
+        ctx.strokeStyle = '#00d4ff';
+        ctx.lineWidth   = 2.5;
+        ctx.globalAlpha = 0.7 + 0.3 * Math.sin(this.t * 6);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
       }
 
-      // Speed ring
+      // Ghost (invincibility) efekti
+      if (e.ghostMs > 0) {
+        ctx.globalAlpha = 0.4 + 0.4 * Math.sin(this.t * 10);
+      }
+
+      // İsim etiketi (lokal oyuncu için büyük, botlar için küçük)
+      ctx.fillStyle = '#fff';
+      ctx.font      = isLocal ? `bold ${S * 0.55}px "Orbitron", sans-serif`
+                               : `${S * 0.45}px "Orbitron", sans-serif`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+      ctx.globalAlpha = 0.9;
+      ctx.fillText(e.name.slice(0, 8), sp.x, sp.y - S * 0.8);
+      ctx.globalAlpha = 1;
+
+      // Hız boost oku
       if (e.speedBoost) {
-        ctx.beginPath();
-        ctx.arc(sp.x, sp.y, r+5, 0, Math.PI*2);
-        ctx.strokeStyle = Utils.hexAlpha('#ffd700', 0.5);
-        ctx.lineWidth = 2; ctx.stroke();
+        ctx.fillStyle   = '#ffd700';
+        ctx.font        = `${S * 0.5}px sans-serif`;
+        ctx.textBaseline= 'middle';
+        ctx.fillText('⚡', sp.x + S * 0.6, sp.y);
       }
 
-      // Body
-      ctx.beginPath();
-      ctx.arc(sp.x, sp.y, r, 0, Math.PI*2);
-      ctx.fillStyle   = isPlayer ? '#ffffff' : e.color;
-      ctx.fill();
-      ctx.strokeStyle = e.color;
-      ctx.lineWidth   = isPlayer ? 3 : 2;
-      ctx.stroke();
-
-      // Direction dot
-      ctx.beginPath();
-      ctx.arc(sp.x+e.dir.x*(r+5), sp.y+e.dir.y*(r+5), 3, 0, Math.PI*2);
-      ctx.fillStyle = isPlayer ? e.color : Utils.darken(e.color,0.7);
-      ctx.fill();
-
-      // Bot name
-      if (!isPlayer) {
-        ctx.font='600 10px JetBrains Mono,monospace';
-        ctx.textAlign='center'; ctx.textBaseline='middle';
-        ctx.fillStyle=Utils.hexAlpha('#fff',0.75);
-        ctx.fillText(e.name, sp.x, sp.y-r-9);
-        ctx.textBaseline='alphabetic';
-      }
-
-      // Player coin count floating above
-      if (isPlayer) {
-        ctx.font='bold 11px Orbitron,monospace';
-        ctx.textAlign='center'; ctx.textBaseline='middle';
-        ctx.fillStyle='#ffd700';
-        ctx.fillText(`⬡${e.coins}`, sp.x, sp.y-r-22);
-        ctx.textBaseline='alphabetic';
-      }
+      ctx.restore();
     }
   }
 
-  _drawPowerupIcon(ctx, x, y, type) {
-    const colors = {speed:'#ffd700',shield:'#00d4ff',double:'#2ed573'};
-    const labels = {speed:'⚡',shield:'🛡',double:'✕2'};
-    const pulse  = 0.7+0.3*Math.sin(this.t*5);
-    ctx.beginPath();
-    ctx.arc(x,y,9,0,Math.PI*2);
-    ctx.fillStyle=Utils.hexAlpha(colors[type],0.85*pulse); ctx.fill();
-    ctx.strokeStyle=colors[type]; ctx.lineWidth=1.5; ctx.stroke();
-    ctx.font='9px Arial'; ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.fillStyle='#fff'; ctx.fillText(labels[type],x,y);
-    ctx.textBaseline='alphabetic';
-  }
-
-  _drawCoin(ctx, x, y, value) {
-    const pulse = 0.8+0.2*Math.sin(this.t*6);
-    const color = value>=5?'#ff6b35':value>=3?'#ffd700':'#ffeb80';
-    ctx.beginPath();
-    ctx.arc(x,y,7*pulse,0,Math.PI*2);
-    ctx.fillStyle=Utils.hexAlpha(color, 0.9); ctx.fill();
-    ctx.strokeStyle=color; ctx.lineWidth=1.2; ctx.stroke();
-    ctx.font='bold 8px monospace'; ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.fillStyle='#1a1000'; ctx.fillText(value,x,y);
-    ctx.textBaseline='alphabetic';
-  }
-
-  // ── FPS counter ───────────────────────────────────────────
+  // ── FPS sayacı ───────────────────────────────────────────
   _drawFPS(ctx) {
     const fps = this._fpsDisplay;
-    const color = fps>=55?'#2ed573':fps>=30?'#ffa502':'#ff4757';
-    ctx.font='bold 11px JetBrains Mono,monospace';
-    ctx.textAlign='right'; ctx.textBaseline='top';
-    ctx.fillStyle=color;
-    ctx.fillText(`${fps} FPS`, this.canvas.width-12, 12);
-    ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+    const color = fps >= 55 ? '#2ed573' : fps >= 30 ? '#ffa502' : '#ff4757';
+    ctx.save();
+    ctx.fillStyle    = color;
+    ctx.font         = 'bold 11px "JetBrains Mono", monospace';
+    ctx.textAlign    = 'right';
+    ctx.textBaseline = 'top';
+    ctx.fillText(`${fps} FPS`, this.canvas.width - 12, 12);
+    ctx.restore();
   }
 
   // ── Minimap ───────────────────────────────────────────────
   _drawMinimap(grid, entities) {
     if (!entities || entities.length === 0) return;
 
-    // Build a fresh color lookup guaranteed to match current entities
     const colorLookup = {};
     for (const e of entities) colorLookup[e.id] = e.color;
 
-    const PX=CONFIG.MINIMAP_PX, cw=PX/grid.w, ch=PX/grid.h;
+    const PX = CONFIG.MINIMAP_PX, cw = PX / grid.w, ch = PX / grid.h;
+
     if (this.minimapDirty) {
       this.minimapDirty = false;
       const mc = this._miniOffCtx;
-      mc.fillStyle='#080c14'; mc.fillRect(0,0,PX,PX);
-      for (let i=0; i<grid._data.length; i++) {
+      mc.fillStyle = '#080c14';
+      mc.fillRect(0, 0, PX, PX);
+      for (let i = 0; i < grid._data.length; i++) {
         const c = grid._data[i];
-        const col=i%grid.w, row=(i/grid.w)|0;
+        const col = i % grid.w, row = (i / grid.w) | 0;
         if (c.danger) {
-          mc.fillStyle='rgba(255,50,50,0.5)';
-          mc.fillRect(col*cw, row*ch, cw+0.5, ch+0.5);
+          mc.fillStyle = 'rgba(255,50,50,0.5)';
+          mc.fillRect(col * cw, row * ch, cw + 0.5, ch + 0.5);
         } else if (c.owner) {
           const color = colorLookup[c.owner];
-          if (color) { mc.fillStyle=color; mc.fillRect(col*cw,row*ch,cw+0.5,ch+0.5); }
+          if (color) { mc.fillStyle = color; mc.fillRect(col * cw, row * ch, cw + 0.5, ch + 0.5); }
         }
       }
     }
+
     const mc = this.mctx;
     mc.drawImage(this._miniOff, 0, 0);
 
-    // Radar upgrade: bot izlerini minimap'te göster
+    // Radar upgrade: minimap'te bot izlerini göster
     const localPlayer = entities.find(e => e.id === this.localPlayerId);
-    const hasRadar = localPlayer?.upgrades?.radar;
+    const hasRadar    = localPlayer?.upgrades?.radar;
     if (hasRadar) {
       for (let i = 0; i < grid._data.length; i++) {
         const c = grid._data[i];
         if (!c.trail) continue;
-        const trailEntity = entities.find(e => e.id === c.trail);
-        if (!trailEntity || !trailEntity.isBot) continue;
+        const trailOwner = entities.find(e => e.id === c.trail);
+        if (!trailOwner || !trailOwner.isBot) continue;
         const col = i % grid.w, row = (i / grid.w) | 0;
-        mc.fillStyle = Utils.hexAlpha(trailEntity.color, 0.7);
+        mc.fillStyle = Utils.hexAlpha(trailOwner.color, 0.7);
         mc.fillRect(col * cw, row * ch, cw + 0.5, ch + 0.5);
       }
     }
 
+    // Entity noktaları
     for (const e of entities) {
       if (!e.alive) continue;
       const isLocal = e.id === this.localPlayerId;

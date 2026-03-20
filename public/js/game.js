@@ -1,5 +1,7 @@
 // ============================================================
-// game.js — Game state manager (v2)
+// game.js — HEXATİ Game State Manager  v2.2
+// ZİGZAG FIX: Kamera hexToPixel kullanıyor (grid ile aynı koordinat)
+// ARCADE FIX: Shop yoksa güvenli yükleme yapılıyor
 // ============================================================
 class Game {
   constructor() {
@@ -18,19 +20,18 @@ class Game {
     this.coins     = new CoinSystem();
     this.shop      = null;
 
-    this.player    = null;
-    this.bots      = [];
-    this.entities  = [];
+    this.player   = null;
+    this.bots     = [];
+    this.entities = [];
 
-    this.running   = false;
-    this.lastTime  = 0;
-    this.diffMult  = 1.0;
+    this.running  = false;
+    this.lastTime = 0;
+    this.diffMult = 1.0;
 
-    this.fpsLimit  = 0;
-    this._fpsInterval = 0;
-    this._accumFPS = 0;
+    this.fpsLimit      = 0;
+    this._fpsInterval  = 0;
+    this._accumFPS     = 0;
 
-    // Load settings
     this._applySettings();
     this._initMenuEvents();
   }
@@ -39,7 +40,7 @@ class Game {
     try {
       const s = JSON.parse(localStorage.getItem('hexati_settings') || '{}');
       if (s.fpsLimit !== undefined) {
-        this.fpsLimit = s.fpsLimit;
+        this.fpsLimit    = s.fpsLimit;
         this._fpsInterval = s.fpsLimit > 0 ? 1000 / s.fpsLimit : 0;
       }
       if (s.difficulty) {
@@ -50,17 +51,29 @@ class Game {
 
   _initMenuEvents() {
     const colorContainer = document.getElementById('color-options');
-    let selectedColor    = CONFIG.PLAYER_COLORS[0];
+    let selectedColor = CONFIG.PLAYER_COLORS[0];
 
-    CONFIG.PLAYER_COLORS.forEach((color, i) => {
+    try {
+      const s = JSON.parse(localStorage.getItem('hexati_settings') || '{}');
+      if (s.lastColor && CONFIG.PLAYER_COLORS.includes(s.lastColor)) {
+        selectedColor = s.lastColor;
+      }
+    } catch(e) {}
+
+    CONFIG.PLAYER_COLORS.forEach(color => {
       const btn = document.createElement('div');
-      btn.className = 'color-opt' + (i === 0 ? ' selected' : '');
+      btn.className    = 'color-opt' + (color === selectedColor ? ' selected' : '');
       btn.style.background = color;
       btn.onclick = () => {
         document.querySelectorAll('.color-opt').forEach(b => b.classList.remove('selected'));
         btn.classList.add('selected');
         selectedColor = color;
         this.audio.click();
+        try {
+          const s = JSON.parse(localStorage.getItem('hexati_settings') || '{}');
+          s.lastColor = color;
+          localStorage.setItem('hexati_settings', JSON.stringify(s));
+        } catch(e) {}
       };
       colorContainer.appendChild(btn);
     });
@@ -79,32 +92,31 @@ class Game {
         document.querySelectorAll('.fps-btn').forEach(b => b.classList.remove('selected'));
         btn.classList.add('selected');
         const v = parseInt(btn.dataset.fps);
-        this.fpsLimit = v;
+        this.fpsLimit     = v;
         this._fpsInterval = v > 0 ? 1000 / v : 0;
         this.audio.click();
       };
     });
 
-    document.getElementById('btn-start').onclick = () => {
+    document.getElementById('btn-start')?.addEventListener('click', () => {
       this.audio.resume();
       this.audio.click();
       this.start(selectedColor);
-    };
+    });
 
-    document.getElementById('btn-respawn').onclick = () => {
+    document.getElementById('btn-respawn')?.addEventListener('click', () => {
       this.audio.resume();
       this.audio.click();
       this.ui.hideDeath();
       this._respawnPlayer();
-    };
+    });
 
-    document.getElementById('btn-menu').onclick = () => {
+    document.getElementById('btn-menu')?.addEventListener('click', () => {
       this.running = false;
       this.ui.hideDeath();
       this.ui.showMenu();
-    };
+    });
 
-    // Escape key → menu
     document.addEventListener('keydown', e => {
       if (e.key === 'Escape' && this.running) {
         this.running = false;
@@ -118,8 +130,7 @@ class Game {
   start(playerColor) {
     this.ui.hideMenu();
 
-    // Reinitialise grid with current CONFIG dimensions
-    this.grid   = new Grid(CONFIG.GRID_W, CONFIG.GRID_H);
+    this.grid     = new Grid(CONFIG.GRID_W, CONFIG.GRID_H);
     this.powerups = new PowerupSystem();
     this.coins    = new CoinSystem();
     this.entities = [];
@@ -127,7 +138,7 @@ class Game {
 
     const cx = CONFIG.GRID_W >> 1, cy = CONFIG.GRID_H >> 1;
 
-    this.player = new Player('player', 'YOU', playerColor, cx, cy);
+    this.player = new Player('player', 'SEN', playerColor, cx, cy);
     this.grid.claimStart(cx, cy, CONFIG.START_AREA_RADIUS, 'player');
     this.player.territory = this.grid.countOwned('player');
     this.player.startTime = Date.now();
@@ -138,8 +149,10 @@ class Game {
 
     const usedColors = new Set([playerColor]);
     for (let i = 0; i < CONFIG.BOT_COUNT; i++) {
-      const color = CONFIG.PLAYER_COLORS.find(c => !usedColors.has(c)) ?? CONFIG.PLAYER_COLORS[i % 8];
+      const color = CONFIG.PLAYER_COLORS.find(c => !usedColors.has(c))
+                 ?? CONFIG.PLAYER_COLORS[i % CONFIG.PLAYER_COLORS.length];
       usedColors.add(color);
+
       let bx, by, att = 0;
       do {
         bx = Utils.randInt(4, CONFIG.GRID_W - 4);
@@ -147,8 +160,12 @@ class Game {
         att++;
       } while (att < 60 && Utils.dist({ x: bx, y: by }, { x: cx, y: cy }) < 14);
 
-      const bot = new Bot(`bot_${i}`, CONFIG.BOT_NAMES[i % 8], color, bx, by, this.diffMult);
-      bot.dir = Utils.pick(Utils.DIRS);
+      const bot = new Bot(
+        `bot_${i}`,
+        CONFIG.BOT_NAMES[i % CONFIG.BOT_NAMES.length],
+        color, bx, by, this.diffMult
+      );
+      bot.dir       = Utils.pick(Utils.DIRS);
       bot.respawnCb = b => this._respawnBot(b);
       this.grid.claimStart(bx, by, CONFIG.START_AREA_RADIUS, bot.id);
       bot.territory = this.grid.countOwned(bot.id);
@@ -157,54 +174,62 @@ class Game {
       this.entities.push(bot);
     }
 
-    this.shop = new Shop(this.player, this.audio, this.ui);
+    // ARCADE FIX: Shop sınıfı yüklü değilse null bırak — crash yok
+    if (typeof Shop !== 'undefined' && document.getElementById('shop-overlay')) {
+      this.shop = new Shop(this.player, this.audio, this.ui);
+    } else {
+      this.shop = null;
+    }
 
-    // Register camera with renderer (syncs viewport size, no canvas reset)
     this.renderer.initCamera(this.camera);
 
-    const pp = Utils.hexToPixelSmooth(cx, cy);
+    // ZİGZAG FIX: hexToPixel — gerçek hex merkezi, grid ile örtüşür
+    const pp = Utils.hexToPixel(cx, cy);
     this.camera.snap(pp.x, pp.y);
     this.renderer.markMinimapDirty();
 
-    this.running  = true;
-    this.lastTime = 0;
+    this.running   = true;
+    this.lastTime  = 0;
     this._accumFPS = 0;
     requestAnimationFrame(t => this._loop(t));
   }
 
   _loop(now) {
     if (!this.running) return;
+    requestAnimationFrame(t => this._loop(t));
 
-    if (this.lastTime === 0) this.lastTime = now;
-    const dt = Math.min(now - this.lastTime, 80);
+    // İlk frame: lastTime sıfır — dt hesabını atla, sadece referans noktasını kaydet
+    if (this.lastTime === 0) { this.lastTime = now; return; }
+
+    const rawDt = now - this.lastTime;
     this.lastTime = now;
 
+    // FPS limiti
     if (this._fpsInterval > 0) {
-      this._accumFPS = (this._accumFPS || 0) + dt;
-      if (this._accumFPS < this._fpsInterval) {
-        requestAnimationFrame(t => this._loop(t));
-        return;
-      }
-      this._accumFPS -= this._fpsInterval;
+      this._accumFPS += rawDt;
+      if (this._accumFPS < this._fpsInterval) return;
+      this._accumFPS = this._accumFPS % this._fpsInterval;
     }
 
+    const dt = Math.min(rawDt, 80);
     this._update(dt);
     this._render(dt);
-    requestAnimationFrame(t => this._loop(t));
   }
 
   _update(dt) {
     if (this.player.alive) {
       this.player.update(dt, this.input, this.grid, this.entities, this.audio, this.ui, this.renderer);
     }
+
     for (const bot of this.bots) {
       bot.update(dt, this.grid, this.entities, this.audio, this.ui, this.renderer);
     }
+
     this.powerups.update(dt, this.grid);
     this.coins.update(dt, this.grid);
 
-    // Follow smooth position — ignores row stagger to prevent left-right jitter
-    const targetPos = Utils.hexToPixelSmooth(this.player.x, this.player.y);
+    // ZİGZAG FIX: hexToPixel kullan (entity.js ile aynı koordinat sistemi)
+    const targetPos = Utils.hexToPixel(this.player.x, this.player.y);
     this.camera.follow(targetPos.x, targetPos.y, dt);
 
     const total = CONFIG.GRID_W * CONFIG.GRID_H;
@@ -223,7 +248,6 @@ class Game {
     this.player.respawn(this.grid, cx, cy);
     this.renderer.markMinimapDirty();
 
-    // Save classic mode score on death
     if (typeof Storage !== 'undefined') {
       const total = CONFIG.GRID_W * CONFIG.GRID_H;
       const pct   = (this.player.territory / total * 100).toFixed(1);
@@ -245,7 +269,7 @@ class Game {
     } while (att < 60 && this.grid.get(bx, by)?.owner);
 
     bot.x = bx; bot.y = by;
-    bot.dir = Utils.pick(Utils.DIRS);
+    bot.dir   = Utils.pick(Utils.DIRS);
     bot.trail = []; bot.outside = false;
     bot.alive = true; bot.state = 'expand'; bot.moveTimer = 0;
     this.grid.claimStart(bx, by, CONFIG.START_AREA_RADIUS, bot.id);

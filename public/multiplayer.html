@@ -588,12 +588,17 @@ function connectSocket() {
     setInterval(() => {
       pingStamp = Date.now();
       socket.emit('ping_check');
-    }, 3000);
+    }, 2000);
   });
 
   socket.on('pong_check', () => {
     pingMs = Date.now() - pingStamp;
-    document.getElementById('tb-ping').textContent = `${pingMs} ms`;
+    const pingEl = document.getElementById('tb-ping');
+    if (pingEl) {
+      pingEl.textContent = `${pingMs} ms`;
+      // Renk: yeşil <60, sarı <120, kırmızı >120
+      pingEl.style.color = pingMs < 60 ? '#2ed573' : pingMs < 120 ? '#ffa502' : '#ff4757';
+    }
   });
 
   socket.on('connect_error', () => {
@@ -741,13 +746,16 @@ function onGameInit(data) {
 
 // ── State update from server ──────────────────────────────────
 function onGameState({ entities, patches }) {
-  if (!gameActive) return;  // ignore state updates before game:init completes
+  if (!gameActive) return;
   if (patches?.length) {
     grid.applyPatches(patches);
     if (renderer) renderer.markMinimapDirty();
   }
   entities.forEach(e => {
     if (!e.dir) e.dir = { x: 1, y: 0 };
+    // FIX: _px/_py koru — yeni obje gelince sıfırlanmasın → snap/sekme yok
+    const prev = entityMap[e.id];
+    if (prev) { e._px = prev._px; e._py = prev._py; }
     entityMap[e.id] = e;
   });
   myEntity = entityMap[myId] || myEntity;
@@ -800,47 +808,52 @@ function renderLoop(now) {
   if (!gameActive) return;
   requestAnimationFrame(renderLoop);
 
-  // FPS cap
+  // FPS cap + ilk frame koruma
+  if (lastFrameAt === 0) { lastFrameAt = now; requestAnimationFrame(renderLoop); return; }
   if (targetFPS > 0 && now - lastFrameAt < frameInterval) return;
-  if (lastFrameAt === 0) lastFrameAt = now;
-  const dt = Math.min(now - lastFrameAt, 100);
+  const dt = Math.min(now - lastFrameAt, 80);
   lastFrameAt = now;
 
   // FPS counter
   fpsSampleCount++;
   if (now - lastFpsSample >= 1000) {
-    displayFPS    = fpsSampleCount;
+    displayFPS     = fpsSampleCount;
     fpsSampleCount = 0;
     lastFpsSample  = now;
     document.getElementById('fps-counter').textContent = `${displayFPS} FPS`;
   }
 
-  // Send pending direction to server
+  // Input → server
   if (inputHandler) {
     const dir = inputHandler.consume();
     if (dir) socket?.emit('input:dir', dir);
   }
 
-  // Re-sync myEntity every frame (state updates may have refreshed it)
   if (myId) myEntity = entityMap[myId] || myEntity;
 
-  // Camera follow — use grid position not px/py to avoid stagger jitter
+  // ── Entity lerp: ZİGZAG FIX ───────────────────────────────
+  // hexToPixel (stagger dahil) kullanılıyor — hexToPixelSmooth ile
+  // even/odd row geçişinde 17px yatay atlama oluyordu.
+  // _px/_py onGameState'te korunuyor → her 100ms'de snap olmuyor.
+  const lerpF = 1 - Math.pow(1 - 0.28, dt / 16.667);
+
+  const entArr = Object.values(entityMap).map(e => {
+    const target = Utils.hexToPixel(e.x, e.y);  // gerçek hex merkezi
+    if (e._px === undefined || e._py === undefined) {
+      e._px = target.x;
+      e._py = target.y;
+    } else {
+      e._px = Utils.lerp(e._px, target.x, lerpF);
+      e._py = Utils.lerp(e._py, target.y, lerpF);
+    }
+    return { ...e, px: e._px, py: e._py, dir: e.dir || { x: 1, y: 0 } };
+  });
+
+  // Camera: hexToPixel ile takip — grid ile tam örtüşür
   if (myEntity && camera) {
     const pp = Utils.hexToPixel(myEntity.x, myEntity.y);
     camera.follow(pp.x, pp.y, dt);
   }
-
-  // Build entity array for renderer (server state, no local simulation)
-  const entArr = Object.values(entityMap).map(e => {
-    const pp = Utils.hexToPixel(e.x, e.y);
-    return {
-      ...e,
-      px: pp.x,
-      py: pp.y,
-      // Ensure dir always exists
-      dir: e.dir || { x: 1, y: 0 },
-    };
-  });
 
   if (renderer) {
     renderer.draw(grid, entArr, camera, dt);

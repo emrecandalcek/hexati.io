@@ -1,11 +1,6 @@
 // ============================================================
-// player.js — Human player (v2 — last-hex trail bug fixed)
-//
-// TRAIL BUG FIX (v1): trail is marked on the cell we LEAVE.
-// LAST-HEX FIX (v2):  when re-entering own territory the final
-//   outside cell (prevX, prevY) was never added to the trail,
-//   so flood-fill missed it and the hex stayed uncoloured.
-//   → We now push prevCell into the trail BEFORE capture.
+// player.js — HEXATİ İnsan Oyuncu (client-side, v2.2)
+// Son-hex iz düzeltmesi + TRAIL BUG düzeltmesi dahil
 // ============================================================
 class Player extends Entity {
   constructor(id, name, color, x, y) {
@@ -16,13 +11,13 @@ class Player extends Entity {
     this.deathCause = null;
     this.combo      = 0;
     this.comboTimer = 0;
-    this.lives      = 3;
+    this.lives      = 3;  // Survival modu için (diğer modlar önemsemez)
   }
 
   update(dt, input, grid, entities, audio, ui, renderer) {
     if (!this.alive) return;
     const expired = this.tickPowerup(dt);
-    if (expired) ui.notify('Power-up expired', '#6c7a89');
+    if (expired) ui.notify('Güçlendirme sona erdi', '#6c7a89');
 
     if (this.combo > 0) {
       this.comboTimer -= dt;
@@ -46,27 +41,25 @@ class Player extends Entity {
     const prevX = this.x, prevY = this.y;
 
     if (!grid.inBounds(nx, ny)) {
-      this._die('boundary', grid, entities, audio, ui);
-      return;
+      this._die('boundary', grid, entities, audio, ui); return;
     }
 
     const nextCell = grid.get(nx, ny);
 
     if (nextCell.trail === this.id) {
-      this._die('self', grid, entities, audio, ui);
-      return;
+      this._die('self', grid, entities, audio, ui); return;
     }
 
     if (nextCell.danger && this.outside && !this.isInvincible()) {
-      this._die('danger', grid, entities, audio, ui);
-      return;
+      this._die('danger', grid, entities, audio, ui); return;
     }
 
+    // Düşman izi kes
     if (nextCell.trail && nextCell.trail !== this.id) {
       const enemy = entities.find(e => e.id === nextCell.trail);
       if (enemy && enemy.alive && !enemy.isInvincible()) {
         enemy._die('trail', grid, entities, audio, ui);
-        ui.killFeed(`YOU cut ${enemy.name}'s trail!`, this.color);
+        ui.killFeed(`SEN ${enemy.name} izini kestin!`, this.color);
         this.kills++;
         this.totalKills++;
         this.addCoins(CONFIG.COIN_KILL_VALUE);
@@ -75,6 +68,7 @@ class Player extends Entity {
       }
     }
 
+    // Coin topla
     if (nextCell.coin) {
       this.addCoins(nextCell.coin);
       nextCell.coin = 0;
@@ -86,12 +80,8 @@ class Player extends Entity {
     audio.step();
 
     if (nextCell.owner === this.id) {
-      // ── Returned to own territory ──────────────────────
       if (this.outside && this.trail.length > 0) {
-
-        // ★ LAST-HEX FIX: the final outside hex (where we just
-        // came FROM) was never added to the trail in this code path.
-        // Push it now so flood-fill paints it correctly.
+        // Son hex düzeltmesi: bölgeye dönerken son dış hücreyi trail'e ekle
         const prevCell = grid.get(prevX, prevY);
         if (prevCell && prevCell.owner !== this.id && prevCell.trail !== this.id) {
           prevCell.trail = this.id;
@@ -100,12 +90,13 @@ class Player extends Entity {
 
         let captured = FloodFill.capture(grid, this.id, this.trail, renderer);
 
+        // Capture bonus upgrade
         const bonusMult = 1 + (this.upgrades.capture_bonus || 0) * 0.2;
         const extraCells = Math.floor(captured * (bonusMult - 1));
         if (extraCells > 0) this._expandCapture(grid, extraCells);
 
-        this.trail   = [];
-        this.outside = false;
+        this.trail    = [];
+        this.outside  = false;
         this.territory = grid.countOwned(this.id);
 
         const coinEarned = Math.floor(captured / 5) * CONFIG.COIN_CAPTURE_BONUS;
@@ -114,21 +105,20 @@ class Player extends Entity {
         this.combo++;
         this.comboTimer = 4000;
         if (this.combo > 1) {
-          ui.notify(`COMBO ×${this.combo}! +${this.combo * 2} coins`, '#ffd700');
+          ui.notify(`COMBO ×${this.combo}! +${this.combo * 2} coin`, '#ffd700');
           this.addCoins(this.combo * 2);
         }
 
         if (this.upgrades.ghost) this.ghostMs = 1200;
 
         audio.capture();
-        if (captured > 8) ui.notify(`+${captured} cells!`, this.color);
+        if (captured > 8) ui.notify(`+${captured} hücre!`, this.color);
         if (renderer) {
           renderer.markMinimapDirty();
           renderer.spawnParticles(Utils.hexToPixel(this.x, this.y), this.color, 18);
         }
       }
     } else {
-      // ── Outside own territory ──────────────────────────
       this.outside = true;
 
       if (nextCell.powerup) {
@@ -136,15 +126,15 @@ class Player extends Entity {
         audio.powerup();
         ui.showPowerup(nextCell.powerup, this.powerupMs);
         ui.notify(
-          nextCell.powerup === 'speed'  ? '⚡ SPEED BOOST'   :
-          nextCell.powerup === 'shield' ? '🛡 SHIELD ON'     : '✕2 DOUBLE CAPTURE',
+          nextCell.powerup === 'speed'  ? '⚡ HIZ BOOST'    :
+          nextCell.powerup === 'shield' ? '🛡 KALKAN AKTİF' : '✕2 ÇİFT YAKALAMA',
           nextCell.powerup === 'speed'  ? '#ffd700' :
-          nextCell.powerup === 'shield' ? '#00d4ff' : '#2ed573'
+          nextCell.powerup === 'shield' ? '#00d4ff'  : '#2ed573'
         );
         nextCell.powerup = null;
       }
 
-      // TRAIL BUG FIX: mark the cell we CAME FROM
+      // Trail iz düzeltmesi: iz'i terk ettiğimiz hücreye bırak
       const prevCell = grid.get(prevX, prevY);
       if (prevCell && prevCell.owner !== this.id) {
         prevCell.trail = this.id;
@@ -154,6 +144,7 @@ class Player extends Entity {
         this.trail.push({ x: this.x, y: this.y });
       }
 
+      // Geniş iz upgrade
       if (this.upgrades.trail_width) {
         for (const d of Utils.DIRS) {
           const nc = grid.get(prevX + d.x, prevY + d.y);
@@ -162,7 +153,7 @@ class Player extends Entity {
       }
 
       if (this.trail.length >= CONFIG.MAX_TRAIL) {
-        ui.notify('Trail limit! Head back!', '#ff4757');
+        ui.notify('İz limiti! Geri dön!', '#ff4757');
       }
     }
 
@@ -190,10 +181,10 @@ class Player extends Entity {
 
   _die(cause, grid, entities, audio, ui) {
     if (!this.alive) return;
-    this.alive = false;
+    this.alive      = false;
     this.deaths++;
     this.deathCause = cause;
-    this.combo = 0;
+    this.combo      = 0;
     grid.clearTrail(this.id);
     this.trail   = [];
     this.outside = false;
