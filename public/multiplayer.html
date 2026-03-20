@@ -758,6 +758,8 @@ function onGameState({ entities, patches }) {
     if (prev) { e._px = prev._px; e._py = prev._py; }
     entityMap[e.id] = e;
   });
+  // Minimap her zaman güncellenmeli — entity pozisyonları değişiyor
+  if (renderer) renderer.markMinimapDirty();
   myEntity = entityMap[myId] || myEntity;
   updateHUD();
 }
@@ -838,8 +840,9 @@ function renderLoop(now) {
   const lerpF = 1 - Math.pow(1 - 0.28, dt / 16.667);
 
   const entArr = Object.values(entityMap).map(e => {
-    const target = Utils.hexToPixel(e.x, e.y);  // gerçek hex merkezi
-    if (e._px === undefined || e._py === undefined) {
+    const target = Utils.hexToPixel(e.x, e.y);
+    // _px/_py yoksa (yeni entity) snap et — NaN/undefined olmasın
+    if (e._px === undefined || e._py === undefined || isNaN(e._px) || isNaN(e._py)) {
       e._px = target.x;
       e._py = target.y;
     } else {

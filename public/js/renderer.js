@@ -245,7 +245,10 @@ class Renderer {
   _drawEntities(entities, camera, ctx) {
     for (const e of entities) {
       if (!e.alive) continue;
-      const sp = camera.toScreen(e.px, e.py);
+      // px/py undefined ise (multiplayer ilk frame) grid pozisyonunu kullan
+      const px = (e.px !== undefined && !isNaN(e.px)) ? e.px : Utils.hexToPixel(e.x, e.y).x;
+      const py = (e.py !== undefined && !isNaN(e.py)) ? e.py : Utils.hexToPixel(e.x, e.y).y;
+      const sp = camera.toScreen(px, py);
       const S  = CONFIG.HEX_SIZE;
       const isLocal = e.id === this.localPlayerId;
 
@@ -309,7 +312,8 @@ class Renderer {
 
   // ── Minimap ───────────────────────────────────────────────
   _drawMinimap(grid, entities) {
-    if (!entities || entities.length === 0) return;
+    if (!grid) return;
+    if (!entities) entities = [];
 
     const colorLookup = {};
     for (const e of entities) colorLookup[e.id] = e.color;
