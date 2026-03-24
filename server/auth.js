@@ -20,11 +20,13 @@ const Auth = {
   },
 
   generateToken(username, role, ip = '') {
+    if (!username || typeof username !== 'string') throw new Error('Invalid username');
+    if (!role || typeof role !== 'string') throw new Error('Invalid role');
     const token = crypto.randomBytes(32).toString('hex');
     SessionStore.set(token, {
-      username,
-      role,
-      ip,
+      username: String(username).toLowerCase(),
+      role: String(role).toLowerCase(),
+      ip: String(ip).slice(0, 45),
       exp:       Date.now() + TOKEN_EXPIRY,
       createdAt: Date.now(),
     });

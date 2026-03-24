@@ -32,34 +32,39 @@ app.use(Auth.middleware);
 
 // ── Static routes ─────────────────────────────────────────────
 app.use('/shared', express.static(path.join(__dirname, 'shared')));
-
-// Temiz URL'ler — .html olmadan çalışır
-// /multiplayer → /multiplayer.html, /admin → /admin.html
-const PAGES = [
-  'index','game','arcade','survival','sandbox',
-  'multiplayer','leaderboard','settings','howtoplay',
-  'login','profile','admin',
-];
-const PUBLIC = path.join(__dirname, 'public');
-
-PAGES.forEach(page => {
-  // /multiplayer  ve  /multiplayer/  ikisi de çalışsın
-  app.get(`/${page}`,     (_req, res) => res.sendFile(path.join(PUBLIC, `${page}.html`)));
-  app.get(`/${page}/`,    (_req, res) => res.sendFile(path.join(PUBLIC, `${page}.html`)));
-});
-
-// Kök / → index
-app.get('/', (_req, res) => res.sendFile(path.join(PUBLIC, 'index.html')));
-
-// Statik dosyalar (.js, .css, vs.) normal şekilde sunulsun
-app.use(express.static(PUBLIC));
+app.use(express.static(path.join(__dirname, 'public')));
 
 // ── Validation & security ─────────────────────────────────────
 const VALID_DIRS  = new Set(['1,0', '-1,0', '0,1', '0,-1']);
+const ADMIN_CONFIG_KEYS = new Set([
+  'TICK_RATE_MS', 'STATE_BROADCAST_MS', 'MOVE_INTERVAL', 'BOT_MOVE_BASE',
+  'BOT_RESPAWN_DELAY', 'MAX_TRAIL', 'POWERUP_SPAWN_MS', 'POWERUP_LIFETIME_MS',
+  'COIN_SPAWN_MS', 'MAX_COINS', 'DANGER_ZONE_COUNT', 'MAX_POWERUPS_ON_MAP',
+  'COIN_KILL_VALUE', 'COIN_CAPTURE_BONUS'
+]);
+
 function escapeHtml(str) {
   return String(str)
     .replace(/&/g,'&amp;').replace(/</g,'&lt;')
     .replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#x27;');
+}
+
+/** @param {string} u - Username to validate */
+function validateUsername(u) {
+  if (!u || typeof u !== 'string') return null;
+  const clean = u.trim().toLowerCase();
+  if (clean.length < 3 || clean.length > 20) return null;
+  if (!/^[a-z0-9_]+$/.test(clean)) return null;
+  return clean;
+}
+
+/** @param {string} e - Email to validate */
+function validateEmail(e) {
+  if (!e || typeof e !== 'string') return null;
+  const clean = e.trim().toLowerCase();
+  if (clean.length > 100) return null;
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clean)) return null;
+  return clean;
 }
 
 // ── Room registry ─────────────────────────────────────────────
@@ -100,47 +105,75 @@ function pickRoom(diff) {
 // ══════════════════════════════════════════════════════════════
 
 // Kayıt
-app.post('/api/auth/register', async (req, res) => {
-  const { username, password, email } = req.body || {};
-  if (!username || !password) return res.json({ ok: false, error: 'Kullanıcı adı ve şifre zorunlu' });
-  if (username.length < 3 || username.length > 20) return res.json({ ok: false, error: 'İsim 3-20 karakter olmalı' });
-  if (password.length < 6) return res.json({ ok: false, error: 'Şifre en az 6 karakter' });
-  if (!/^[a-zA-Z0-9_]+$/.test(username)) return res.json({ ok: false, error: 'Sadece harf, rakam ve _' });
+app.post('/api/auth/register', async (req, res, next) => {
+  try {
+    const { username, password, email } = req.body || {};
+    const validUsername = validateUsername(username);
+    if (!validUsername) return res.status(400).json({ ok: false, error: 'Geçersiz kullanıcı adı' });
+    
+    if (!password || typeof password !== 'string' || password.length < 6 || password.length > 128)
+      return res.status(400).json({ ok: false, error: 'Şifre 6-128 karakter olmalı' });
 
-  const hash = await Auth.hashPassword(password);
-  const user = Users.create(username, hash, email || '');
-  if (!user) return res.json({ ok: false, error: 'Bu kullanıcı adı zaten alınmış' });
+    const hash = await Auth.hashPassword(password);
+    const user = Users.create(validUsername, hash, email || '');
+    if (!user) return res.status(409).json({ ok: false, error: 'Kullanıcı adı zaten alınmış' });
 
-  const token = Auth.generateToken(user.username, user.role);
-  Users.update(username, { lastLogin: Date.now(), lastIP: req.ip });
-  Logs.info('auth', `Yeni kayıt: ${username} (${user.role})`);
+    const token = Auth.generateToken(user.username, user.role, req.ip);
+    Users.update(validUsername, { lastLogin: Date.now(), lastIP: req.ip });
+    Logs.info('auth', `Kayıt: ${validUsername}`);
 
-  res.cookie('hexati_token', token, { httpOnly: true, maxAge: 7*24*3600*1000 });
-  res.json({ ok: true, token, user: sanitizeUser(user) });
+    res.cookie('hexati_token', token, { 
+      httpOnly: true, 
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 7*24*3600*1000
+    });
+    res.json({ ok: true, token, user: sanitizeUser(user) });
+  } catch(e) {
+    Logs.error('auth', `Kayıt hatası: ${e.message}`);
+    next(e);
+  }
 });
 
 // Giriş
-app.post('/api/auth/login', async (req, res) => {
-  const { username, password } = req.body || {};
-  if (!username || !password) return res.json({ ok: false, error: 'Bilgiler eksik' });
+app.post('/api/auth/login', async (req, res, next) => {
+  try {
+    const { username, password } = req.body || {};
+    const validUsername = validateUsername(username);
+    if (!validUsername || !password) return res.status(401).json({ ok: false, error: 'Kimlik doğrulama başarısız' });
 
-  const user = Users.get(username);
-  if (!user) return res.json({ ok: false, error: 'Kullanıcı bulunamadı' });
-  if (user.banned) return res.json({ ok: false, error: `Hesabınız yasaklandı: ${user.banReason}` });
+    const user = Users.get(validUsername);
+    if (!user) {
+      Logs.warn('auth', `Başarısız giriş: ${validUsername} (yok) IP:${req.ip}`);
+      return res.status(401).json({ ok: false, error: 'Kimlik doğrulama başarısız' });
+    }
+    if (user.banned) {
+      Logs.warn('auth', `Yasaklı giriş: ${validUsername} IP:${req.ip}`);
+      return res.status(403).json({ ok: false, error: `Hesabınız yasaklandı: ${user.banReason}` });
+    }
 
-  const ok = await Auth.verifyPassword(password, user.passwordHash);
-  if (!ok) {
-    Logs.warn('auth', `Başarısız giriş: ${username} IP:${req.ip}`);
-    return res.json({ ok: false, error: 'Şifre yanlış' });
+    const passwordOk = await Auth.verifyPassword(password, user.passwordHash);
+    if (!passwordOk) {
+      Logs.warn('auth', `Yanlış şifre: ${validUsername} IP:${req.ip}`);
+      return res.status(401).json({ ok: false, error: 'Kimlik doğrulama başarısız' });
+    }
+
+    const token = Auth.generateToken(user.username, user.role, req.ip);
+    Users.update(validUsername, { lastLogin: Date.now(), lastIP: req.ip });
+    Logs.info('auth', `Giriş: ${validUsername}`);
+    Stats.inc('totalConnections');
+
+    res.cookie('hexati_token', token, { 
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 7*24*3600*1000
+    });
+    res.json({ ok: true, token, user: sanitizeUser(user) });
+  } catch(e) {
+    Logs.error('auth', `Giriş hatası: ${e.message}`);
+    next(e);
   }
-
-  const token = Auth.generateToken(user.username, user.role);
-  Users.update(username, { lastLogin: Date.now(), lastIP: req.ip });
-  Logs.info('auth', `Giriş: ${username} (${user.role})`);
-  Stats.inc('totalConnections');
-
-  res.cookie('hexati_token', token, { httpOnly: true, maxAge: 7*24*3600*1000 });
-  res.json({ ok: true, token, user: sanitizeUser(user) });
 });
 
 // Çıkış
@@ -616,5 +649,5 @@ initRooms();
 server.listen(PORT, () => {
   console.log(`\n🎮 HEXATİ Multiplayer  v${CONFIG.VERSION}`);
   console.log(`   http://localhost:${PORT}`);
-  console.log(`   Admin: http://localhost:${PORT}/admin\n`);
+  console.log(`   Admin: http://localhost:${PORT}/admin.html\n`);
 });
